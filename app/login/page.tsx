@@ -18,11 +18,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <h1 className="text-xl font-semibold">Pando Helpdesk</h1>
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-app">
+      <div className="text-center">
+        <p className="text-[13px] font-semibold tracking-wide text-pando">PANDO</p>
+        <p className="text-[13px] text-ink-muted">HELPDESK</p>
+      </div>
       <button
         onClick={handleLogin}
-        className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+        className="rounded-btn bg-pando px-4 py-2 text-[13px] font-medium text-white transition-colors duration-150 hover:bg-pando-anthracite"
       >
         Entrar con Microsoft
       </button>

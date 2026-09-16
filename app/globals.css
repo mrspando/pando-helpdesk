@@ -1,26 +1,63 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Superficies */
+  --color-app: #f7f7f6;
+  --color-surface: #ffffff;
+  --color-surface-2: #f3f3f2;
+  --color-surface-hover: #eeeeec;
+
+  /* Texto */
+  --color-ink: #181818;
+  --color-ink-secondary: #666666;
+  --color-ink-muted: #929292;
+  --color-ink-disabled: #b5b5b5;
+
+  /* Bordes */
+  --color-border: #e5e5e3;
+  --color-border-strong: #d5d5d2;
+
+  /* Identidad Pando */
+  --color-pando: #111111;
+  --color-pando-anthracite: #292929;
+
+  --radius-input: 7px;
+  --radius-btn: 8px;
+  --radius-card: 10px;
+  --radius-badge: 6px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-app: var(--color-app);
+  --color-surface: var(--color-surface);
+  --color-surface-2: var(--color-surface-2);
+  --color-surface-hover: var(--color-surface-hover);
+
+  --color-ink: var(--color-ink);
+  --color-ink-secondary: var(--color-ink-secondary);
+  --color-ink-muted: var(--color-ink-muted);
+  --color-ink-disabled: var(--color-ink-disabled);
+
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+
+  --color-pando: var(--color-pando);
+  --color-pando-anthracite: var(--color-pando-anthracite);
+
+  --radius-input: var(--radius-input);
+  --radius-btn: var(--radius-btn);
+  --radius-card: var(--radius-card);
+  --radius-badge: var(--radius-badge);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: var(--color-app);
+  color: var(--color-ink);
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+* {
+  border-color: var(--color-border);
 }

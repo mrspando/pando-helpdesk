@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentPersona } from "@/lib/supabase/persona";
+import { Sidebar } from "@/components/sidebar";
 
 export default async function AgenteLayout({
   children,
@@ -18,22 +18,13 @@ export default async function AgenteLayout({
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center gap-6 border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
-        <span className="font-semibold">Pando Helpdesk</span>
-        <nav>
-          <Link
-            href="/tickets"
-            className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-          >
-            Cola de tickets
-          </Link>
-        </nav>
-        <span className="ml-auto text-sm text-zinc-500">
-          {persona.nombre ?? persona.email}
-        </span>
-      </header>
-      <main className="p-6">{children}</main>
+    <div className="flex min-h-screen bg-app">
+      <Sidebar
+        nombre={persona.nombre}
+        email={persona.email}
+        departamento={persona.departamento}
+      />
+      <main className="min-w-0 flex-1">{children}</main>
     </div>
   );
 }
