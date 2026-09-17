@@ -123,49 +123,47 @@ export default async function MiTicketDetailPage({ params }: PageProps<"/mis-tic
   const departamentoMap = Object.fromEntries((departamentos ?? []).map((d) => [d.id, d.nombre]));
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
-      <div className="shrink-0 px-8 pb-4 pt-6">
-        <Link
-          href="/mis-tickets"
-          className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-ink-muted transition-colors duration-150 hover:text-ink"
-        >
-          <ArrowLeft size={14} />
-          Mis tickets
-        </Link>
+    <div>
+      <Link
+        href="/mis-tickets"
+        className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-ink-muted transition-colors duration-150 hover:text-ink"
+      >
+        <ArrowLeft size={14} />
+        Mis tickets
+      </Link>
 
-        <p className="font-mono text-[12.5px] text-ink-muted">{ticket.ref ?? `PANDO-${ticket.id}`}</p>
-        <div className="mt-0.5 flex items-center gap-2">
-          <h1 className="text-[19px] font-semibold leading-snug text-ink">{ticket.titulo}</h1>
-          <StatusBadge estado={ticket.estado} />
-        </div>
-        <p className="mt-1 text-[13px] text-ink-muted">{formatRelativeTime(ticket.created_at)}</p>
+      <p className="font-mono text-[12.5px] text-ink-muted">{ticket.ref ?? `PANDO-${ticket.id}`}</p>
+      <div className="mt-0.5 flex items-center gap-2">
+        <h1 className="text-[19px] font-semibold leading-snug text-ink">{ticket.titulo}</h1>
+        <StatusBadge estado={ticket.estado} />
       </div>
+      <p className="mt-1 text-[13px] text-ink-muted">{formatRelativeTime(ticket.created_at)}</p>
 
-      <div className="flex min-h-0 flex-1 border-t border-border">
-        <Tabs defaultValue="conversacion" className="flex min-w-0 flex-1 flex-col">
+      <div className="mt-4 flex items-start overflow-hidden rounded-card border border-border bg-surface">
+        <Tabs defaultValue="conversacion" className="min-w-0 flex-1">
           <TabsList>
             <TabsTrigger value="conversacion">Conversación</TabsTrigger>
             <TabsTrigger value="cronologia">Cronología</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="conversacion" className="flex min-h-0 flex-1 flex-col">
-            <div className="flex-1 overflow-y-auto">
-              {ticket.descripcion && (
-                <div className="border-b border-border px-8 py-6">
-                  <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
-                    Descripción inicial
-                  </p>
-                  <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink">
-                    {ticket.descripcion}
-                  </p>
-                </div>
-              )}
-              <Conversation messages={conversation} />
+          <TabsContent value="conversacion">
+            {ticket.descripcion && (
+              <div className="border-b border-border px-8 py-6">
+                <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+                  Descripción inicial
+                </p>
+                <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink">
+                  {ticket.descripcion}
+                </p>
+              </div>
+            )}
+            <Conversation messages={conversation} />
+            <div className="border-t border-border px-8 py-6">
+              <ReplyForm ticketId={ticket.id} />
             </div>
-            <ReplyForm ticketId={ticket.id} />
           </TabsContent>
 
-          <TabsContent value="cronologia" className="min-h-0 flex-1 overflow-y-auto">
+          <TabsContent value="cronologia">
             <Timeline
               events={timelineEvents}
               categorias={categoriaMap}

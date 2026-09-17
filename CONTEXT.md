@@ -284,8 +284,19 @@ siguiendo el sistema de diseño Pando de este documento**
 - [x] Ficha de ticket (`/tickets/[id]`): panel de propiedades editable
       (estado/prioridad/categoría/tipo/departamento por dropdown),
       conversación con distinción visual de notas internas, composer
-      Responder/Nota interna — **el "Responder" solo guarda el mensaje
-      en `messages`, todavía no envía el correo real vía Graph**
+      de tres modos — **Responder** (envío real de correo vía Graph,
+      como el propio agente logueado, con Para/CC), **Chat** (mensaje
+      que entra en el histórico del ticket exactamente igual que una
+      respuesta — lo ve el solicitante y Gerencia/Dirección — pero sin
+      disparar ningún correo: pensado para ida y vuelta rápida con el
+      solicitante sin el peso de redactar un email) y **Nota interna**
+      (privada, nunca visible fuera de admin). Los tres se guardan como
+      `direccion = 'saliente'`; lo único que distingue a "Chat" de
+      "Responder" es que no lleva `destinatarios`/`enviado_at` ni pasa
+      por `sendMailAsUser`. El trigger `tg_first_response` ya contaba
+      cualquier mensaje saliente no-nota para `first_response_at`, así
+      que un "Chat" cuenta como primera respuesta igual que un
+      "Responder" — no hizo falta tocar ningún trigger.
 - [x] Pestaña **"Cronología"** en la ficha de ticket: timeline de todos
       los `events` del ticket (creación, cada cambio de estado con su
       badge, prioridad, categoría, tipo, departamento) con quién y
@@ -351,6 +362,15 @@ siguiendo el sistema de diseño Pando de este documento**
       sus propios tickets (antes `events` solo tenía políticas para
       admin y Gerencia/Dirección, ningún solicitante podía leer ni un
       evento).
+      **Bug corregido de esta misma pasada:** al copiar el layout de
+      ficha de agente (`h-screen flex-col overflow-hidden`, pensado
+      para un `<main>` sin cabecera propia) a `/mis-tickets/[id]`, el
+      `<header>` + `p-6` del layout de solicitante hacían que el
+      formulario de respuesta quedara recortado fuera del viewport
+      visible — visible en el DOM pero inalcanzable, como si se hubiera
+      eliminado. Se sustituyó por un layout de flujo normal (sin altura
+      fija ni scroll interno), que es además más apropiado para esta
+      pantalla más sencilla.
 
 **Roles y permisos (ver `PERMISOS.md` para el detalle completo,
 incluida la matriz de comportamiento esperado)**

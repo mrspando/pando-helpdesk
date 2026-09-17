@@ -70,10 +70,12 @@ export async function updateDepartamento(ticketId: number, departamentoId: numbe
   return { error: null };
 }
 
+export type MessageMode = "reply" | "chat" | "nota";
+
 export async function sendMessage(
   ticketId: number,
   cuerpoTexto: string,
-  esNotaInterna: boolean,
+  mode: MessageMode,
   recipients?: { to: string[]; cc: string[] },
 ) {
   const persona = await requireAdmin();
@@ -84,8 +86,9 @@ export async function sendMessage(
 
   let destinatarios: string[] | null = null;
   let copia: string[] | null = null;
+  let enviadoAt: string | null = null;
 
-  if (!esNotaInterna) {
+  if (mode === "reply") {
     const to = (recipients?.to ?? []).map((address) => address.trim()).filter(Boolean);
     const cc = (recipients?.cc ?? []).map((address) => address.trim()).filter(Boolean);
 
@@ -110,15 +113,20 @@ export async function sendMessage(
 
     destinatarios = to;
     copia = cc.length > 0 ? cc : null;
+    enviadoAt = new Date().toISOString();
   }
 
+  // "chat" queda como "saliente" no nota: el solicitante y Gerencia/Dirección
+  // lo ven en la conversación igual que una respuesta real (y cuenta para
+  // first_response_at vía tg_first_response, ver supabase/README.md), pero
+  // no dispara ningún correo — sin destinatarios ni enviado_at.
   const { error } = await supabase.from("messages").insert({
     ticket_id: ticketId,
     direccion: "saliente",
     autor_id: persona.id,
     cuerpo_texto: body,
-    es_nota_interna: esNotaInterna,
-    enviado_at: esNotaInterna ? null : new Date().toISOString(),
+    es_nota_interna: mode === "nota",
+    enviado_at: enviadoAt,
     destinatarios,
     copia,
   });
