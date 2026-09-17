@@ -1,3 +1,82 @@
+# Estado de implementación (2026-09-17)
+
+> Esta sección se actualiza después de cada tramo de trabajo sobre este
+> documento. El texto original de la petición se conserva íntegro más
+> abajo — no se reescribe, para no perder el razonamiento y las
+> decisiones que motivaron cada punto.
+
+**Hecho — Fase 1 (modelo de datos + RLS real):**
+- Migración `supabase/migrations/20260917100000_roles_rls_fase1.sql`.
+- Enum `rol_persona` (`admin`, `gerencia`, `direccion`, `empleado`) y
+  columna `personas.rol`, migrada desde `es_agente`
+  (`true → admin`, `false → empleado`). `es_agente` sigue en la tabla,
+  sin ningún consumidor en código ni RLS — pendiente de borrarla en una
+  limpieza posterior, cuando se decida que es completamente segura.
+- Funciones de seguridad `SECURITY DEFINER`: `is_admin()`,
+  `current_rol()`, `current_departamento_id()`,
+  `can_view_ticket(ticket_id)`. `is_agente()` se conserva como alias de
+  `is_admin()` — la siguen usando `categorias_agente`, `tipos_agente`,
+  `departamentos_agente` y `personas_agente_update`, que no se
+  migraron todavía a llamar a `is_admin()` directamente (deuda técnica
+  menor, mismo comportamiento).
+- Políticas nuevas: `tickets_gerencia_select` (todo), `tickets_direccion_select`
+  (su departamento **+ tickets sin departamento asignar**, decisión
+  explícita del usuario), `messages_lectura_extendida` y
+  `events_lectura_extendida` (mismo alcance, excluyendo siempre notas
+  internas), `email_ingesta_admin_select`.
+- De paso se corrigió `attachments_visibles` (bug ya documentado en
+  `supabase/README.md`), sustituida por `attachments_lectura` sobre
+  `can_view_ticket()`.
+
+**Hecho — Fase 2 (rutas y navegación):**
+- `app/(agente)/ajustes/layout.tsx`: `/ajustes` y subrutas protegidas
+  en servidor, redirige a `/tickets` si `rol !== "admin"` — no basta
+  con ocultar el enlace, como pedía el documento.
+- Sidebar: el bloque "Ajustes" solo se renderiza para `admin`.
+- `/tickets` e `/informes` no necesitaron ningún filtro nuevo en el
+  código: al consultar Supabase con la sesión del usuario (no
+  `service_role`), las políticas de la Fase 1 ya recortan las filas
+  por rol/departamento antes de que la página las reciba.
+
+**Hecho — Fase 3 (experiencia de solo lectura), con una corrección
+del usuario sobre el documento original:**
+- Ficha de ticket: Estado/Prioridad como badge fijo y
+  Categoría/Tipo/Departamento como texto plano (sin dropdown) para
+  quien no sea `admin`; composer de Responder/Nota interna oculto por
+  completo para esos roles.
+- **Corrección explícita:** el documento original decía "Crear ticket
+  manual: Admin sí, el resto no". El usuario indicó que **todo el
+  mundo puede crear tickets** — se interpretó como autoservicio:
+  cualquier rol crea un ticket a su propio nombre (política
+  `tickets_propios_insert`, que ya existía y nunca se tocó); el
+  selector de solicitante en "+ Nuevo" solo aparece para `admin`, que
+  es el único que puede crear en nombre de otra persona.
+
+**Decisiones tomadas sobre puntos que el documento original dejaba
+abiertos** (confirmadas por el usuario antes de implementar):
+1. Nombres en interfaz: `gerencia` se muestra como **"Dirección
+   General"**, `direccion` como **"Responsable de departamento"** —
+   los valores del enum en base de datos no cambiaron.
+2. Admin tiene lectura de `email_ingesta` desde la app (antes nadie).
+3. Storage: se comprobó contra el proyecto real y **no existe ningún
+   bucket todavía** — no hay subida de adjuntos implementada en
+   ningún sitio, así que la parte de "revisa las policies del bucket"
+   no aplica por ahora.
+
+**Explícitamente aparcado / fuera de esta pasada:**
+- Tests de seguridad automatizados contra RLS — omitidos a petición
+  del usuario.
+- `/mis-tickets` (empleado): la RLS ya permite que un empleado cree y
+  lea sus propios tickets, pero no existe ninguna pantalla que lo use
+  todavía (sigue siendo el placeholder "Próximamente").
+- Que Gerencia/Responsable de departamento puedan crear tickets **en
+  nombre de otra persona** (hoy solo `admin` puede).
+- Migrar `categorias_agente`/`tipos_agente`/`departamentos_agente`/
+  `personas_agente_update` de `is_agente()` a `is_admin()` directamente.
+- Borrar la columna `personas.es_agente`.
+
+---
+
 Quiero que implementes un sistema completo de **roles, permisos y Row Level Security (RLS)** en la aplicación Pando Helpdesk.
 
 Antes de modificar código, analiza la estructura actual del proyecto, las migraciones existentes de Supabase, las políticas RLS, los tipos TypeScript, la autenticación y las pantallas actuales.

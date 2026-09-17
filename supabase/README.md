@@ -19,13 +19,13 @@ clasificador de seguridad — hay que correrlo a mano).
 Al capturar el esquema real aparecieron dos huecos que el documento no
 reflejaba:
 
-1. **RLS de `attachments`** (política `attachments_visibles`) — **sin
-   corregir**. La condición es `EXISTS (SELECT 1 FROM messages m WHERE
-   m.id = attachments.message_id)` — no comprueba ni la propiedad del
-   ticket ni `es_nota_interna`. Cualquier usuario autenticado puede leer
-   los metadatos de cualquier adjunto, incluidos los de notas internas,
-   pese a que el modelo de acceso documentado dice que un solicitante
-   nunca debe verlas.
+1. **RLS de `attachments`** (política `attachments_visibles`) — **corregida**
+   en `20260917100000_roles_rls_fase1.sql`. La condición original era
+   `EXISTS (SELECT 1 FROM messages m WHERE m.id = attachments.message_id)`
+   — no comprobaba ni la propiedad del ticket ni `es_nota_interna`.
+   Sustituida por `attachments_lectura`, que delega en la función
+   `can_view_ticket()` y hereda así el mismo alcance por rol/departamento
+   que `tickets` y `messages`.
 2. **Permisos de `events`** — **corregido** en
    `20260916110000_fix_events_trigger_permissions.sql`. Las funciones
    `tg_tickets_alta`/`tg_tickets_audit` (las que escriben en `events`)
@@ -52,6 +52,16 @@ reflejaba:
   `personas.departamento` (texto libre) por `personas.departamento_id`,
   relacionado con el mismo catálogo `departamentos` que usan los
   tickets.
+- `20260917100000_roles_rls_fase1.sql` — Fase 1 del sistema de roles
+  descrito en `PERMISOS.md`: enum `rol_persona`, columna `personas.rol`
+  (migrada desde `es_agente`, que queda en la tabla sin usarse por
+  nadie), funciones `is_admin()`/`current_rol()`/
+  `current_departamento_id()`/`can_view_ticket()`, políticas de lectura
+  extendida en `tickets`/`messages`/`events` para Gerencia y Responsable
+  de departamento, arreglo de `attachments` (ver arriba) y lectura de
+  `email_ingesta` para Admin. Las fases 2 (rutas/navegación) y 3
+  (UI de solo lectura) de `PERMISOS.md` no necesitaron ninguna
+  migración nueva, solo código de aplicación.
 
 ## Próximos cambios de esquema
 

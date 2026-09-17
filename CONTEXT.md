@@ -44,19 +44,49 @@ mantenimiento propio a cambio de control total.
 - Proyecto Supabase: `pando-helpdesk`
 - Repositorio GitHub: `pando-helpdesk` (privado)
 
-## Modelo de acceso: agentes vs. solicitantes
+## Modelo de acceso: cuatro roles (ver `PERMISOS.md` para el detalle completo)
 
 No hay roles de Supabase ni de Entra ID implicados. Todo se resuelve
-con la columna `es_agente` (boolean) en la tabla `personas`:
+con la columna `personas.rol` (enum `rol_persona`), que sustituyó al
+booleano original `es_agente` (`true → admin`, `false → empleado`
+en la migración de conversión; la columna `es_agente` sigue existiendo
+en la base de datos pero ya no la usa ningún código ni política —
+pendiente de una limpieza futura).
 
-- Al hacer login por primera vez vía SSO, se crea automáticamente una
-  fila en `personas` con `es_agente = false` (trigger sobre
-  `auth.users`).
-- Manu es el único con `es_agente = true`, fijado a mano.
-- Row Level Security en Postgres impone el límite a nivel de base de
-  datos, no de interfaz: un agente ve y edita todos los tickets; un
-  solicitante solo ve (lectura) los suyos propios, y nunca las notas
-  internas.
+- **`admin`** — control total (Manu). Único rol que puede escribir:
+  crear/editar tickets, responder, notas internas, gestionar catálogos
+  y personas, entrar en `/ajustes`.
+- **`gerencia`** (mostrado en la interfaz como **"Dirección General"**)
+  — lectura de todos los tickets/informes de todos los departamentos.
+  Solo lectura.
+- **`direccion`** (mostrado como **"Responsable de departamento"**) —
+  lectura limitada a `tickets.departamento_id = personas.departamento_id`,
+  incluyendo además los tickets que todavía no tienen departamento
+  asignado (decisión explícita: no penalizar tickets sin triar). Solo
+  lectura.
+- **`empleado`** — ve únicamente sus propios tickets. Cualquier rol,
+  incluido empleado, puede **crear** un ticket a su propio nombre (la
+  política `tickets_propios_insert` nunca se restringió a admin); solo
+  `admin` puede crear un ticket en nombre de otra persona.
+
+Al hacer login por primera vez vía SSO se crea automáticamente una fila
+en `personas` con `rol = 'empleado'` (trigger sobre `auth.users`, valor
+por defecto de la columna).
+
+Row Level Security en Postgres impone el límite a nivel de base de
+datos, no de interfaz — funciones reutilizables en `public`:
+`is_admin()`, `current_rol()`, `current_departamento_id()`,
+`can_view_ticket(ticket_id)`. `is_agente()` se mantiene como alias de
+compatibilidad de `is_admin()` (la usan las políticas de catálogos y
+personas que aún no se migraron a llamarla directamente).
+
+Notas internas de `messages`: solo `admin` las ve; `gerencia`,
+`direccion` y `empleado` nunca, ya filtrado por RLS antes de llegar a
+la aplicación.
+
+`/ajustes` (y sus subrutas) están protegidas también a nivel de
+servidor (no solo ocultas en la sidebar): cualquier rol que no sea
+`admin` es redirigido a `/tickets` si intenta entrar por URL.
 
 ## Esquema de datos (resumen — ver `supabase/migrations/` para el SQL completo)
 
@@ -65,13 +95,17 @@ con la columna `es_agente` (boolean) en la tabla `personas`:
   eje de clasificación independiente del ticket: Categoría (ERP/BC,
   Hardware, Accesos...), Tipo (Incidencia, Solicitud, Proyecto...) y
   Departamento al que afecta. Los tres se gestionan (alta/baja/borrado)
-  desde `Ajustes → Catálogos`, solo por agentes.
+  desde `Ajustes → Catálogos`, solo por `admin`.
 - **`personas`** — solicitantes y agentes, enlazados a `auth.users`
   vía `auth_user_id`. `departamento_id` es una relación al catálogo
   `departamentos` (antes era texto libre; se migró para no tener cada
-  quien escribiendo el departamento distinto). Editable por completo
-  (nombre, departamento, `es_agente`, `activo`) desde
-  `Ajustes → Personas`.
+  quien escribiendo el departamento distinto). `rol` (enum
+  `rol_persona`: admin/gerencia/direccion/empleado) sustituye al
+  antiguo booleano `es_agente` como modelo de acceso — ver sección
+  "Modelo de acceso" más arriba. Editable por completo (nombre,
+  departamento, rol, activo) desde `Ajustes → Personas`, con la regla
+  de que no se puede quitar el rol `admin` (ni desactivar) a la última
+  persona que lo tiene.
 - **`tickets`** — título (= asunto del correo, editable en triaje) y
   descripción (= cuerpo del correo) son campos separados. Incluye
   categoría, tipo y departamento (los tres opcionales, vía los
@@ -185,10 +219,10 @@ resto es más fácil.
       cualquier ticket como agente autenticado (no `service_role`)
       fallaba en silencio porque el trigger no tenía permiso de
       `INSERT` en `events`. Ver `supabase/README.md`.
-- [ ] **Riesgo abierto:** la política RLS `attachments_visibles` no
-      filtra por propiedad del ticket ni por `es_nota_interna` —
-      cualquier autenticado puede leer metadatos de cualquier adjunto.
-      No se ha corregido todavía.
+- [x] Corregido también el hueco de `attachments`: la política
+      `attachments_visibles` no filtraba por propiedad del ticket ni
+      por `es_nota_interna`. Sustituida por `attachments_lectura`,
+      que delega en `can_view_ticket()` (ver más abajo).
 
 **Pantallas de agente (`/tickets`, `/ajustes`) — implementadas
 siguiendo el sistema de diseño Pando de este documento**
@@ -210,9 +244,47 @@ siguiendo el sistema de diseño Pando de este documento**
 - [x] `/ajustes` reestructurado como landing de tarjetas → `Catálogos`
       (gestión de categorías/tipos/departamentos: alta, desactivar,
       borrar) y `Personas` (listado editable de todos los dados de
-      alta: nombre, departamento, rol de agente, activo/inactivo)
-- [ ] `/mis-tickets` (solicitante) — sigue siendo solo un placeholder
-      "Próximamente"; no hay pantallas de solicitante diseñadas aún
+      alta: nombre, departamento, **rol**, activo/inactivo)
+- [ ] `/mis-tickets` (empleado) — sigue siendo solo un placeholder
+      "Próximamente". La RLS ya permite que un empleado cree y lea sus
+      propios tickets (`tickets_propios_insert`/`_select`), pero no
+      existe todavía ninguna pantalla que lo use.
+
+**Roles y permisos (ver `PERMISOS.md` para el detalle completo,
+incluida la matriz de comportamiento esperado)**
+- [x] Fase 1 — modelo de datos: enum `rol_persona`
+      (admin/gerencia/direccion/empleado), columna `personas.rol`
+      (migrada desde `es_agente`), funciones `is_admin()`,
+      `current_rol()`, `current_departamento_id()`,
+      `can_view_ticket(ticket_id)`. Políticas de lectura extendida en
+      `tickets`/`messages`/`events` para Gerencia (todo) y Responsable
+      de departamento (su departamento + tickets sin departamento
+      asignar). Admin ya puede leer `email_ingesta` desde la app.
+- [x] Fase 2 — rutas y navegación: `/ajustes` y subrutas protegidas a
+      nivel de servidor (no solo ocultas en sidebar), redirigen a
+      `/tickets` si el rol no es `admin`. Sidebar solo muestra
+      "Ajustes" a `admin`. `/tickets` e `/informes` no necesitaron
+      ningún filtro adicional en el código — el recorte por rol y
+      departamento ya lo hace RLS antes de que la query llegue a la
+      página.
+- [x] Fase 3 — experiencia de solo lectura: en la ficha de ticket,
+      Estado/Prioridad se muestran como badge fijo y
+      Categoría/Tipo/Departamento como texto plano (sin dropdown) para
+      quien no sea `admin`; el composer de Responder/Nota interna
+      desaparece por completo para esos roles. **Excepción explícita
+      del usuario:** crear tickets no se restringió a `admin` —
+      cualquier rol puede crear un ticket a su propio nombre (política
+      `tickets_propios_insert`, sin tocar); solo `admin` puede elegir
+      un solicitante distinto en "+ Nuevo".
+- [ ] Pendiente / explícitamente aparcado: tests de seguridad
+      automatizados contra RLS (omitidos a petición del usuario);
+      migrar `categorias_agente`/`tipos_agente`/`departamentos_agente`/
+      `personas_agente_update` para llamar a `is_admin()` directamente
+      en vez de al alias `is_agente()`; borrar la columna `es_agente`
+      (inerte, sin ningún consumidor); permitir que Gerencia/Responsable
+      de departamento creen tickets en nombre de otra persona (hoy
+      solo `admin` puede); políticas de bucket de Storage para
+      adjuntos (no aplica todavía — no existe ningún bucket creado).
 
 **Correo (sin empezar)**
 - [ ] Segundo registro de app en Entra ID (permisos de aplicación sobre
