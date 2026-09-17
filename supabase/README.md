@@ -73,6 +73,22 @@ reflejaba:
   departamento la primera vez que entra, sin RLS de `UPDATE` genérica
   sobre `personas` que pudiera colar un cambio de `rol` de paso. Solo
   actúa mientras `departamento_id` sigue a `NULL`.
+- `20260917130000_nombre_visible_onboarding.sql` — dos cosas:
+  1. Política `personas_visible_por_conversacion`: un solicitante
+     puede ver la fila de `personas` de quien le haya escrito (no nota
+     interna) en un ticket suyo — antes `personas_self` lo ocultaba
+     todo salvo la fila propia, y el frontend mostraba "Agente"
+     genérico en vez del nombre real.
+  2. Sustituye `set_own_departamento(smallint)` por
+     `complete_own_onboarding(text, smallint)`, que fija nombre y
+     departamento en el mismo paso — el nombre sin candado (no pesa en
+     RLS), el departamento sigue solo-una-vez como antes.
+- `20260917140000_personas_agente_delete.sql` — política
+  `personas_agente_delete` (`FOR DELETE`, `is_admin()`). `personas`
+  nunca había tenido ninguna política de `DELETE`, así que nadie podía
+  borrar una fila desde la app hasta ahora, ni siquiera Admin. El
+  borrado sigue protegido por las FK `RESTRICT` de `tickets`/`messages`/
+  `events` (no se puede borrar a nadie con historial asociado).
 
 ## Próximos cambios de esquema
 

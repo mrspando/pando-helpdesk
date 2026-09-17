@@ -230,9 +230,12 @@ cambio de estado, cierre, informe básico a dirección basado en
 `events`.
 
 **Fuera de v1, a propósito:**
-- Portal de autoservicio para que el usuario abra tickets directamente
-  (fase 2 — para formularios estructurados como altas/bajas de
-  usuario, donde el email no basta).
+- ~~Portal de autoservicio para que el usuario abra tickets
+  directamente~~ — adelantado: ver `/mis-tickets` en el checklist de
+  más abajo. Sigue pendiente la parte de "formularios estructurados
+  como altas/bajas de usuario" — hoy es un formulario libre
+  (título + descripción + categoría/tipo), no un flujo guiado por tipo
+  de solicitud.
 - Base de conocimiento.
 - SLA de tiempo de resolución (solo se compromete tiempo de primera
   respuesta).
@@ -292,11 +295,29 @@ siguiendo el sistema de diseño Pando de este documento**
 - [x] `/ajustes` reestructurado como landing de tarjetas → `Catálogos`
       (gestión de categorías/tipos/departamentos: alta, desactivar,
       borrar) y `Personas` (listado editable de todos los dados de
-      alta: nombre, departamento, **rol**, activo/inactivo)
-- [ ] `/mis-tickets` (empleado) — sigue siendo solo un placeholder
-      "Próximamente". La RLS ya permite que un empleado cree y lea sus
-      propios tickets (`tickets_propios_insert`/`_select`), pero no
-      existe todavía ninguna pantalla que lo use.
+      alta: nombre, departamento, **rol**, activo/inactivo, y ahora
+      también **eliminar**, solo `admin`). Borrar falla con mensaje
+      claro si esa persona ya tiene tickets/mensajes/eventos asociados
+      (FK `RESTRICT` a propósito, para no perder historial) — sugiere
+      desactivar en su lugar. Bloqueado también borrarse a uno mismo o
+      al último `admin` activo.
+- [x] `/mis-tickets` (empleado) — portal de autoservicio mínimo:
+      listado de los tickets propios, botón "Nuevo ticket" (sin
+      selector de solicitante ni de prioridad — la prioridad la sigue
+      fijando solo el agente), y ficha `/mis-tickets/[id]` de solo
+      lectura con la conversación y una caja para añadir más mensajes
+      (inserta como `direccion = 'entrante'`, igual que simularía un
+      correo entrante). No hay edición de propiedades ni notas
+      internas en esta vista — eso sigue siendo exclusivo de `admin`
+      en `/tickets/[id]`. `tickets_propios_insert`/`_select` y
+      `messages_propios_insert`/`_select` ya lo permitían desde el
+      baseline. Se añadió una política nueva,
+      `personas_visible_por_conversacion`, para que el solicitante vea
+      el nombre real de quien le responde (antes cualquier fila de
+      `personas` que no fuera la propia quedaba oculta por
+      `personas_self`, y se veía el genérico "Agente") — solo abre la
+      fila de quien te haya escrito de verdad en un ticket tuyo, no el
+      directorio completo de empleados.
 
 **Roles y permisos (ver `PERMISOS.md` para el detalle completo,
 incluida la matriz de comportamiento esperado)**
@@ -324,10 +345,15 @@ incluida la matriz de comportamiento esperado)**
       cualquier rol puede crear un ticket a su propio nombre (política
       `tickets_propios_insert`, sin tocar); solo `admin` puede elegir
       un solicitante distinto en "+ Nuevo".
-- [x] Onboarding de departamento obligatorio: toda persona nueva entra
-      con `rol = 'empleado'` (el mínimo, ya era el valor por defecto)
-      y sin departamento; no puede usar el resto de la app hasta
-      elegir uno en `/onboarding`. `admin` exento a propósito.
+- [x] Onboarding obligatorio de nombre + departamento: toda persona
+      nueva entra con `rol = 'empleado'` (el mínimo, ya era el valor
+      por defecto); no puede usar el resto de la app hasta confirmar
+      su nombre y elegir departamento en `/onboarding`. `admin` exento
+      a propósito. El nombre se puede reintentar sin límite (campo
+      cosmético, sin peso en RLS); el departamento solo se puede fijar
+      una vez por uno mismo (`complete_own_onboarding()`,
+      `SECURITY DEFINER` de un solo propósito) — cambiarlo después ya
+      es cosa de `admin` desde `Ajustes → Personas`.
 - [ ] Pendiente / explícitamente aparcado: tests de seguridad
       automatizados contra RLS (omitidos a petición del usuario);
       migrar `categorias_agente`/`tipos_agente`/`departamentos_agente`/

@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,8 +16,15 @@ type Departamento = { id: number; nombre: string };
 
 const initialState: { error: string | null } = { error: null };
 
-export function OnboardingForm({ departamentos }: { departamentos: Departamento[] }) {
+export function OnboardingForm({
+  defaultNombre,
+  departamentos,
+}: {
+  defaultNombre: string;
+  departamentos: Departamento[];
+}) {
   const [state, formAction, pending] = useActionState(completeOnboarding, initialState);
+  const [nombre, setNombre] = useState(defaultNombre);
   const [departamentoId, setDepartamentoId] = useState<number | null>(null);
 
   if (departamentos.length === 0) {
@@ -32,28 +40,42 @@ export function OnboardingForm({ departamentos }: { departamentos: Departamento[
     <form action={formAction} className="mt-4 space-y-3">
       <input type="hidden" name="departamento_id" value={departamentoId ?? ""} />
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className="flex h-9 w-full items-center justify-between rounded-input border border-border bg-surface px-3 text-[13px] text-ink"
-          >
-            {departamentos.find((d) => d.id === departamentoId)?.nombre ?? "Selecciona un departamento"}
-            <ChevronDown size={14} className="text-ink-muted" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-          {departamentos.map((d) => (
-            <DropdownMenuItem
-              key={d.id}
-              selected={departamentoId === d.id}
-              onSelect={() => setDepartamentoId(d.id)}
+      <div>
+        <label className="mb-1 block text-[12.5px] font-medium text-ink-secondary">Nombre</label>
+        <Input
+          name="nombre"
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          placeholder="Nombre y apellidos"
+          className="w-full"
+        />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-[12.5px] font-medium text-ink-secondary">Departamento</label>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex h-9 w-full items-center justify-between rounded-input border border-border bg-surface px-3 text-[13px] text-ink"
             >
-              {d.nombre}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+              {departamentos.find((d) => d.id === departamentoId)?.nombre ?? "Selecciona un departamento"}
+              <ChevronDown size={14} className="text-ink-muted" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+            {departamentos.map((d) => (
+              <DropdownMenuItem
+                key={d.id}
+                selected={departamentoId === d.id}
+                onSelect={() => setDepartamentoId(d.id)}
+              >
+                {d.nombre}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       {state?.error && <p className="text-[12.5px] text-red-600">{state.error}</p>}
 
@@ -61,7 +83,7 @@ export function OnboardingForm({ departamentos }: { departamentos: Departamento[
         type="submit"
         variant="primary"
         size="sm"
-        disabled={pending || !departamentoId}
+        disabled={pending || !nombre.trim() || !departamentoId}
         className="w-full justify-center"
       >
         Continuar

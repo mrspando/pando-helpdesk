@@ -18,7 +18,7 @@ export default async function SolicitanteLayout({
     redirect("/tickets");
   }
 
-  if (!persona.departamento) {
+  if (!persona.departamento || !persona.nombre) {
     redirect("/onboarding");
   }
 

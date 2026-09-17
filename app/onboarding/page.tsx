@@ -6,7 +6,7 @@ import { OnboardingForm } from "./onboarding-form";
 export default async function OnboardingPage() {
   const persona = await getCurrentPersona();
   if (!persona) redirect("/login");
-  if (persona.departamento) redirect("/");
+  if (persona.departamento && persona.nombre) redirect("/");
 
   const supabase = await createClient();
   const { data: departamentos } = await supabase
@@ -23,13 +23,12 @@ export default async function OnboardingPage() {
       </div>
 
       <div className="w-full max-w-sm rounded-card border border-border bg-surface p-6">
-        <h1 className="text-[16px] font-semibold text-ink">
-          {persona.nombre ? `Hola, ${persona.nombre}` : "Antes de empezar"}
-        </h1>
+        <h1 className="text-[16px] font-semibold text-ink">Antes de empezar</h1>
         <p className="mt-1 text-[13px] text-ink-muted">
-          ¿En qué departamento trabajas? Ayuda a dirigir tus tickets al sitio correcto.
+          Confirma tu nombre y en qué departamento trabajas — ayuda a dirigir tus tickets
+          al sitio correcto.
         </p>
-        <OnboardingForm departamentos={departamentos ?? []} />
+        <OnboardingForm defaultNombre={persona.nombre ?? ""} departamentos={departamentos ?? []} />
       </div>
     </div>
   );

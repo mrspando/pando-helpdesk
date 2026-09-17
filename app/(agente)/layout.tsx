@@ -21,7 +21,7 @@ export default async function AgenteLayout({
   // asignado (proyecto recién estrenado), Admin necesita poder entrar
   // a Ajustes → Catálogos para crear alguno antes de que tenga sentido
   // pedírselo a él mismo.
-  if (persona.rol !== "admin" && !persona.departamento) {
+  if (persona.rol !== "admin" && (!persona.departamento || !persona.nombre)) {
     redirect("/onboarding");
   }
 

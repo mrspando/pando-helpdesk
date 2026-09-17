@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { ChevronDown, Search } from "lucide-react";
+import { ChevronDown, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -16,6 +16,7 @@ import {
   updatePersonaDepartamento,
   updatePersonaRol,
   togglePersonaActivo,
+  deletePersona,
 } from "./actions";
 
 type Departamento = { id: number; nombre: string };
@@ -190,9 +191,11 @@ function RolField({
 export function PersonasManager({
   personas,
   departamentos,
+  currentPersonaId,
 }: {
   personas: Persona[];
   departamentos: Departamento[];
+  currentPersonaId: string | null;
 }) {
   const [query, setQuery] = useState("");
   const [pending, startTransition] = useTransition();
@@ -212,6 +215,16 @@ export function PersonasManager({
     });
   }
 
+  function handleDelete(persona: Persona) {
+    const nombre = persona.nombre ?? persona.email;
+    if (!confirm(`¿Eliminar a "${nombre}"? Esta acción no se puede deshacer.`)) return;
+    startTransition(async () => {
+      const { error } = await deletePersona(persona.id);
+      if (error) toast.error(error);
+      else toast.success("Persona eliminada");
+    });
+  }
+
   return (
     <div>
       <div className="relative mb-3 w-64">
@@ -225,12 +238,13 @@ export function PersonasManager({
       </div>
 
       <div className="rounded-card border border-border">
-        <div className="grid grid-cols-[1.1fr_1.3fr_0.9fr_auto_auto] gap-3 border-b border-border bg-surface-2 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+        <div className="grid grid-cols-[1.1fr_1.3fr_0.9fr_auto_auto_auto] gap-3 border-b border-border bg-surface-2 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
           <span>Nombre</span>
           <span>Email</span>
           <span>Departamento</span>
           <span>Rol</span>
           <span>Activo</span>
+          <span className="sr-only">Eliminar</span>
         </div>
 
         {filtered.length === 0 && (
@@ -241,7 +255,7 @@ export function PersonasManager({
           {filtered.map((p) => (
             <div
               key={p.id}
-              className="grid grid-cols-[1.1fr_1.3fr_0.9fr_auto_auto] items-center gap-3 px-3 py-1.5"
+              className="grid grid-cols-[1.1fr_1.3fr_0.9fr_auto_auto_auto] items-center gap-3 px-3 py-1.5"
             >
               <NombreField personaId={p.id} value={p.nombre ?? ""} disabled={pending} />
               <span className="truncate text-[12.5px] text-ink-muted">{p.email}</span>
@@ -259,6 +273,19 @@ export function PersonasManager({
                 disabled={pending}
                 onClick={() => handleToggleActivo(p.id, !p.activo)}
               />
+              {p.id === currentPersonaId ? (
+                <span />
+              ) : (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => handleDelete(p)}
+                  title="Eliminar"
+                  className="flex h-6 w-6 items-center justify-center justify-self-end rounded-btn text-ink-muted transition-colors duration-150 hover:bg-red-50 hover:text-red-600"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
             </div>
           ))}
         </div>

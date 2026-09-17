@@ -14,6 +14,7 @@ type TicketDetail = {
   id: number;
   ref: string | null;
   titulo: string;
+  descripcion: string | null;
   categoria_id: number | null;
   tipo_id: number | null;
   departamento_id: number | null;
@@ -66,7 +67,7 @@ export default async function TicketDetailPage({ params }: PageProps<"/tickets/[
     supabase
       .from("tickets")
       .select(
-        `id, ref, titulo, categoria_id, tipo_id, departamento_id, prioridad, estado, created_at,
+        `id, ref, titulo, descripcion, categoria_id, tipo_id, departamento_id, prioridad, estado, created_at,
          triaged_at, first_response_at, resolved_at,
          solicitante:personas!tickets_solicitante_id_fkey(nombre, email)`,
       )
@@ -154,6 +155,16 @@ export default async function TicketDetailPage({ params }: PageProps<"/tickets/[
 
           <TabsContent value="conversacion" className="flex min-h-0 flex-1 flex-col">
             <div className="flex-1 overflow-y-auto">
+              {ticket.descripcion && (
+                <div className="border-b border-border px-8 py-6">
+                  <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+                    Descripción inicial
+                  </p>
+                  <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink">
+                    {ticket.descripcion}
+                  </p>
+                </div>
+              )}
               <Conversation messages={conversation} />
             </div>
             {canEdit && <Composer ticketId={ticket.id} defaultTo={ticket.solicitante?.email ?? ""} />}

@@ -76,6 +76,40 @@ export async function updatePersonaRol(personaId: string, rol: Rol) {
   return { error: null };
 }
 
+export async function deletePersona(personaId: string) {
+  const actor = await requireAdmin();
+
+  if (personaId === actor.id) {
+    return { error: "No puedes eliminar tu propia cuenta." };
+  }
+
+  const supabase = await createClient();
+
+  const { data: target } = await supabase
+    .from("personas")
+    .select("rol")
+    .eq("id", personaId)
+    .single();
+
+  if (target?.rol === "admin" && !(await hasOtherActiveAdmin(personaId))) {
+    return { error: "No puedes eliminar a la última persona con rol Admin." };
+  }
+
+  const { error } = await supabase.from("personas").delete().eq("id", personaId);
+
+  revalidatePath("/ajustes/personas");
+
+  if (error) {
+    if (error.code === "23503") {
+      return {
+        error: "No se puede eliminar: tiene tickets, mensajes o eventos asociados. Desactívala en su lugar.",
+      };
+    }
+    return { error: error.message };
+  }
+  return { error: null };
+}
+
 export async function togglePersonaActivo(personaId: string, activo: boolean) {
   await requireAdmin();
   const supabase = await createClient();
