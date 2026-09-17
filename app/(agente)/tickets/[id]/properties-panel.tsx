@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -20,6 +20,7 @@ import {
   type Prioridad,
 } from "@/lib/format";
 import {
+  deleteTicket,
   updateCategoria,
   updateDepartamento,
   updateEstado,
@@ -108,6 +109,7 @@ function CatalogPropertyRow({
 
 export function PropertiesPanel({
   ticketId,
+  refCode,
   canEdit,
   estado,
   prioridad,
@@ -124,6 +126,7 @@ export function PropertiesPanel({
   resolvedAt,
 }: {
   ticketId: number;
+  refCode: string;
   canEdit: boolean;
   estado: Estado;
   prioridad: Prioridad;
@@ -146,6 +149,20 @@ export function PropertiesPanel({
       const { error } = await promise;
       if (error) toast.error(error);
       else toast.success(okMessage);
+    });
+  }
+
+  function handleDelete() {
+    if (
+      !confirm(
+        `¿Eliminar el ticket ${refCode}? Se borrarán también todos sus mensajes, adjuntos y su cronología. Esta acción no se puede deshacer.`,
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      const result = await deleteTicket(ticketId);
+      if (result?.error) toast.error(result.error);
     });
   }
 
@@ -246,6 +263,20 @@ export function PropertiesPanel({
         <Fact label="1ª respuesta" value={firstResponseAt && formatDateTime(firstResponseAt)} />
         <Fact label="Resuelto" value={resolvedAt && formatDateTime(resolvedAt)} />
       </div>
+
+      {canEdit && (
+        <div className="mt-4 border-t border-border pt-3">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={handleDelete}
+            className="flex items-center gap-1.5 text-[12.5px] text-ink-muted transition-colors duration-150 hover:text-red-600"
+          >
+            <Trash2 size={13} />
+            Eliminar ticket
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

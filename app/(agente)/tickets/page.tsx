@@ -19,6 +19,7 @@ type TicketRowData = {
   created_at: string;
   solicitante: { nombre: string | null; email: string } | null;
   categoria: { nombre: string } | null;
+  departamento: { nombre: string } | null;
 };
 
 const BUCKET_ESTADOS: Record<TicketTabKey, Estado[] | null> = {
@@ -71,7 +72,8 @@ export default async function TicketsPage({ searchParams }: PageProps<"/tickets"
         .select(
           `id, ref, titulo, prioridad, estado, created_at,
            solicitante:personas!tickets_solicitante_id_fkey(nombre, email),
-           categoria:categorias(nombre)`,
+           categoria:categorias(nombre),
+           departamento:departamentos(nombre)`,
         )
         .is("deleted_at", null)
         .order(sortField, { ascending: sortDir === "asc" });
@@ -156,6 +158,7 @@ export default async function TicketsPage({ searchParams }: PageProps<"/tickets"
                 createdAt={ticket.created_at}
                 solicitanteNombre={ticket.solicitante?.nombre ?? ticket.solicitante?.email ?? "—"}
                 categoriaNombre={ticket.categoria?.nombre ?? "Sin categoría"}
+                departamentoNombre={ticket.departamento?.nombre ?? "Sin departamento"}
               />
             ))}
           </div>

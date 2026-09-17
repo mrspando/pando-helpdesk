@@ -22,8 +22,13 @@ export async function createOwnTicket(
   // solicitante_id sale siempre de la sesión, nunca del formulario: un
   // empleado solo puede abrir tickets a su propio nombre
   // (tickets_propios_insert en RLS ya lo exige igualmente). Sin
-  // prioridad ni departamento aquí a propósito — la prioridad la fija
-  // el agente en el triaje, nunca el usuario.
+  // prioridad aquí a propósito — la prioridad la fija el agente en el
+  // triaje, nunca el usuario. El departamento sí se autorrellena con el
+  // propio del empleado (ya lo conocemos desde el onboarding): si no,
+  // el ticket nace sin departamento y, con la RLS estricta de
+  // Dirección (ver supabase/README.md, 20260917160000), quedaría
+  // invisible para el responsable de ese departamento hasta que un
+  // agente lo triara a mano. Sigue siendo editable por el agente.
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tickets")
@@ -33,6 +38,7 @@ export async function createOwnTicket(
       solicitante_id: persona.id,
       categoria_id: categoriaIdRaw ? Number(categoriaIdRaw) : null,
       tipo_id: tipoIdRaw ? Number(tipoIdRaw) : null,
+      departamento_id: persona.departamentoId,
       origen: "manual",
     })
     .select("id")

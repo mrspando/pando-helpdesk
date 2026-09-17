@@ -1,5 +1,6 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentPersona } from "@/lib/supabase/persona";
@@ -68,6 +69,19 @@ export async function updateDepartamento(ticketId: number, departamentoId: numbe
   revalidatePath("/tickets");
   if (error) return { error: error.message };
   return { error: null };
+}
+
+// Borrado real (no soft-delete): `messages`/`events` cascadean desde
+// `tickets` en la base de datos (y `attachments` a su vez desde
+// `messages`), así que este único DELETE se lleva por delante todo el
+// historial del ticket. Ver supabase/migrations/20260917170000_tickets_delete.sql.
+export async function deleteTicket(ticketId: number) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase.from("tickets").delete().eq("id", ticketId);
+  if (error) return { error: error.message };
+  revalidatePath("/tickets");
+  redirect("/tickets");
 }
 
 // Un Responsable de departamento o Dirección General que crea un

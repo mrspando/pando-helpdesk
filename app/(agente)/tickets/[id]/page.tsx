@@ -191,6 +191,7 @@ export default async function TicketDetailPage({ params }: PageProps<"/tickets/[
 
         <PropertiesPanel
           ticketId={ticket.id}
+          refCode={ticket.ref ?? `PANDO-${ticket.id}`}
           canEdit={canEdit}
           estado={ticket.estado}
           prioridad={ticket.prioridad}

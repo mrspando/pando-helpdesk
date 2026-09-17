@@ -120,6 +120,25 @@ Martínez al crear un ticket:**
    RLS: `messages_propios_insert` nunca estuvo restringida a
    `empleado`.
 
+**Hecho (2026-09-17): eliminar ticket, solo `admin`.** Botón "Eliminar
+ticket" en `/tickets/[id]` (gateado por `canEdit`, igual que el resto
+de controles de edición — nunca visible para Gerencia/Dirección/
+Empleado, cumpliendo "ocultar acciones destructivas" de este mismo
+documento). Borrado real, arrastrando mensajes/eventos/adjuntos por
+cascada de FK (`messages`/`events` ya cascadeaban desde el baseline).
+Requirió `supabase/migrations/20260917170000_tickets_delete.sql` para
+que `email_ingesta` no bloqueara el borrado.
+
+**Bug corregido (2026-09-17), mismo origen que el de Ruth Martínez:**
+`createOwnTicket` (creación desde `/mis-tickets`, empleado) nunca
+rellenaba `departamento_id` — decisión original análoga a "la prioridad
+la fija el agente", pero el departamento del empleado ya se conoce
+desde el onboarding, y dejarlo en blanco lo hacía invisible para el
+responsable de ese departamento tras la RLS estricta añadida más arriba
+(sin el fallback a `departamento_id IS NULL`). Se autorrellena ahora
+con el propio departamento del empleado; sigue editable por el agente
+en el triaje. La prioridad no se toca, sigue sin fijarla el empleado.
+
 **Explícitamente aparcado / fuera de esta pasada:**
 - Tests de seguridad automatizados contra RLS — omitidos a petición
   del usuario.

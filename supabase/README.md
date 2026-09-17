@@ -107,6 +107,16 @@ reflejaba:
   `PERMISOS.md` desde el principio. Los tickets sin triar dejan de ser
   visibles para Dirección hasta que Admin/Gerencia les asigne
   departamento.
+- `20260917170000_tickets_delete.sql` — cambia la FK
+  `email_ingesta_ticket_id_fkey` de `NO ACTION` a `ON DELETE SET NULL`.
+  Era la única pieza que faltaba para poder borrar un ticket entero:
+  `messages`/`events` ya cascadeaban desde `tickets` en el baseline (y
+  `attachments` a su vez desde `messages`), así que un `DELETE FROM
+  tickets` ya arrastraba mensajes/eventos/adjuntos; solo
+  `email_ingesta` (log de auditoría de correos entrantes, no contenido
+  del ticket) habría bloqueado el borrado con una violación de FK. No
+  hizo falta ninguna política RLS nueva — `tickets_agente` ya es `FOR
+  ALL` para Admin desde el baseline, DELETE incluido.
 
 ## Próximos cambios de esquema
 

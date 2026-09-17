@@ -14,6 +14,7 @@ export function TicketRow({
   createdAt,
   solicitanteNombre,
   categoriaNombre,
+  departamentoNombre,
 }: {
   id: number;
   refCode: string;
@@ -23,6 +24,7 @@ export function TicketRow({
   createdAt: string;
   solicitanteNombre: string;
   categoriaNombre: string;
+  departamentoNombre: string;
 }) {
   const urgent = prioridad === "critica" || prioridad === "alta";
 
@@ -49,6 +51,7 @@ export function TicketRow({
 
       <span className="truncate text-[13px] text-ink-secondary">{solicitanteNombre}</span>
       <span className="truncate text-[13px] text-ink-secondary">{categoriaNombre}</span>
+      <span className="truncate text-[13px] text-ink-secondary">{departamentoNombre}</span>
 
       <div>
         <PriorityBadge prioridad={prioridad} />

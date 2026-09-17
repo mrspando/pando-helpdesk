@@ -175,6 +175,7 @@ export default async function MiTicketDetailPage({ params }: PageProps<"/mis-tic
 
         <PropertiesPanel
           ticketId={ticket.id}
+          refCode={ticket.ref ?? `PANDO-${ticket.id}`}
           canEdit={false}
           estado={ticket.estado}
           prioridad={ticket.prioridad}

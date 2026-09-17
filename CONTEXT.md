@@ -286,11 +286,12 @@ siguiendo el sistema de diseño Pando de este documento**
       búsqueda, botón **"+ Nuevo"** para dar de alta tickets a mano
       (peticiones que llegan por pasillo/teléfono, `origen = 'manual'`).
       Listado en formato tabla por columnas (Ticket/Solicitante/
-      Categoría/Prioridad/Estado/Creado), cabecera clicable para
-      ordenar ascendente/descendente (estado en la URL, sobrevive a
-      filtros y pestañas) — Solicitante y Categoría no son ordenables
-      a propósito (serían sort sobre tabla relacionada, sin forma de
-      probarlo aquí con sesión real).
+      Categoría/**Departamento**/Prioridad/Estado/Creado — columna
+      Departamento añadida el 2026-09-17, a petición del usuario),
+      cabecera clicable para ordenar ascendente/descendente (estado en
+      la URL, sobrevive a filtros y pestañas) — Solicitante, Categoría
+      y Departamento no son ordenables a propósito (serían sort sobre
+      tabla relacionada, sin forma de probarlo aquí con sesión real).
 - [x] Ficha de ticket (`/tickets/[id]`): panel de propiedades editable
       (estado/prioridad/categoría/tipo/departamento por dropdown),
       conversación con distinción visual de notas internas, composer
@@ -388,6 +389,18 @@ siguiendo el sistema de diseño Pando de este documento**
       sus propios tickets (antes `events` solo tenía políticas para
       admin y Gerencia/Dirección, ningún solicitante podía leer ni un
       evento).
+      **Corregido (2026-09-17):** `createOwnTicket` nunca rellenaba
+      `departamento_id` (a propósito, igual que la prioridad — "eso lo
+      tría el agente"), pero a diferencia de la prioridad, el
+      departamento del empleado ya se conoce desde el onboarding y no
+      hay ninguna razón para dejarlo en blanco. Además, con la RLS
+      estricta de Dirección (`20260917160000_direccion_solo_su_departamento.sql`,
+      sin fallback a `departamento_id IS NULL`), un ticket de empleado
+      sin departamento quedaba invisible para el responsable de ese
+      departamento hasta que alguien lo triara a mano. Ahora se
+      autorrellena con el propio departamento del empleado (sigue
+      siendo editable por el agente en el triaje); la prioridad sigue
+      sin tocarse.
       **Bug corregido de esta misma pasada:** al copiar el layout de
       ficha de agente (`h-screen flex-col overflow-hidden`, pensado
       para un `<main>` sin cabecera propia) a `/mis-tickets/[id]`, el
@@ -434,6 +447,23 @@ incluida la matriz de comportamiento esperado)**
       cambia el valor inicial. Para `admin` no cambia nada en la
       práctica (no tiene departamento propio, por eso queda exento del
       onboarding).
+- [x] Eliminar ticket (solo `admin`): botón "Eliminar ticket" al pie
+      del panel de propiedades en `/tickets/[id]` (`canEdit`, así que
+      nunca visible para Gerencia/Dirección/Empleado — es una "acción
+      destructiva", ocultas por completo para esos roles), con
+      confirmación nativa antes de borrar. Es borrado real, no
+      soft-delete (la columna `tickets.deleted_at` existe en el
+      esquema pero ninguna acción la usa; solo se lee en los `SELECT`
+      para dejar la puerta abierta a un soft-delete futuro si hiciera
+      falta) — `DELETE FROM tickets` arrastra mensajes, eventos y
+      adjuntos vía `ON DELETE CASCADE` (ya existían desde el baseline).
+      Requirió una migración pequeña,
+      `20260917170000_tickets_delete.sql`, para que
+      `email_ingesta.ticket_id` no bloqueara el borrado con una
+      violación de FK (pasa a `ON DELETE SET NULL`: es un log de
+      auditoría de correos entrantes, no contenido del ticket, tiene
+      sentido conservarlo). Sin política RLS nueva: `tickets_agente` ya
+      era `FOR ALL` para Admin desde siempre.
 - [x] Onboarding obligatorio de nombre + departamento: toda persona
       nueva entra con `rol = 'empleado'` (el mínimo, ya era el valor
       por defecto); no puede usar el resto de la app hasta confirmar

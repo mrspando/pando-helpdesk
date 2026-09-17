@@ -10,6 +10,7 @@ const COLUMNS: { field: SortField | null; label: string; align?: "end" }[] = [
   { field: "id", label: "Ticket" },
   { field: null, label: "Solicitante" },
   { field: null, label: "Categoría" },
+  { field: null, label: "Departamento" },
   { field: "prioridad", label: "Prioridad" },
   { field: "estado", label: "Estado" },
   { field: "created_at", label: "Creado", align: "end" },
