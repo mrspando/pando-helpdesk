@@ -18,6 +18,10 @@ export default async function SolicitanteLayout({
     redirect("/tickets");
   }
 
+  if (!persona.departamento) {
+    redirect("/onboarding");
+  }
+
   return (
     <div className="min-h-screen bg-app">
       <header className="flex items-center gap-6 border-b border-border bg-surface px-6 py-4">

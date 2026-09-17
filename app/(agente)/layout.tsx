@@ -17,6 +17,14 @@ export default async function AgenteLayout({
     redirect("/mis-tickets");
   }
 
+  // Admin queda exento a propósito: si nadie tuviera aún departamento
+  // asignado (proyecto recién estrenado), Admin necesita poder entrar
+  // a Ajustes → Catálogos para crear alguno antes de que tenga sentido
+  // pedírselo a él mismo.
+  if (persona.rol !== "admin" && !persona.departamento) {
+    redirect("/onboarding");
+  }
+
   return (
     <div className="flex min-h-screen bg-app">
       <Sidebar

@@ -67,6 +67,12 @@ reflejaba:
   no-nota) para registrar a quién se envió realmente cada respuesta,
   ahora que el composer permite añadir destinatarios manuales y CC
   además del solicitante (ver `lib/graph/mail.ts`).
+- `20260917120000_onboarding_departamento.sql` — función
+  `set_own_departamento(smallint)` (`SECURITY DEFINER`, de un solo
+  propósito) para que cualquier persona pueda fijar su propio
+  departamento la primera vez que entra, sin RLS de `UPDATE` genérica
+  sobre `personas` que pudiera colar un cambio de `rol` de paso. Solo
+  actúa mientras `departamento_id` sigue a `NULL`.
 
 ## Próximos cambios de esquema
 

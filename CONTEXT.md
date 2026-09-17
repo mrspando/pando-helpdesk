@@ -88,6 +88,17 @@ la aplicación.
 servidor (no solo ocultas en la sidebar): cualquier rol que no sea
 `admin` es redirigido a `/tickets` si intenta entrar por URL.
 
+**Onboarding obligatorio de departamento.** Cualquier persona (menos
+`admin`, exento a propósito para no bloquearse a sí mismo si aún no
+hay ningún departamento creado) sin `departamento_id` es redirigida a
+`/onboarding` desde ambos layouts (`(agente)` y `(solicitante)`) hasta
+que elige uno. Solo puede fijarlo una vez por sí misma: la función
+`set_own_departamento()` (`SECURITY DEFINER`) solo actúa mientras el
+campo sigue a `NULL` — a partir de ahí, cambiarlo es cosa de `admin`
+desde `Ajustes → Personas`. Deliberadamente no es una política RLS de
+`UPDATE` genérica sobre `personas` (esa permitiría colar un cambio de
+`rol` en la misma petición).
+
 ## Esquema de datos (resumen — ver `supabase/migrations/` para el SQL completo)
 
 - **`categorias`**, **`tipos`**, **`departamentos`** — tres catálogos
@@ -313,6 +324,10 @@ incluida la matriz de comportamiento esperado)**
       cualquier rol puede crear un ticket a su propio nombre (política
       `tickets_propios_insert`, sin tocar); solo `admin` puede elegir
       un solicitante distinto en "+ Nuevo".
+- [x] Onboarding de departamento obligatorio: toda persona nueva entra
+      con `rol = 'empleado'` (el mínimo, ya era el valor por defecto)
+      y sin departamento; no puede usar el resto de la app hasta
+      elegir uno en `/onboarding`. `admin` exento a propósito.
 - [ ] Pendiente / explícitamente aparcado: tests de seguridad
       automatizados contra RLS (omitidos a petición del usuario);
       migrar `categorias_agente`/`tipos_agente`/`departamentos_agente`/
