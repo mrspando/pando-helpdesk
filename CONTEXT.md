@@ -341,15 +341,39 @@ siguiendo el sistema de diseño Pando de este documento**
       (sin librería nueva) — entradas/resoluciones y backlog
       reconstruido día a día desde `events` (no aproximado desde el
       estado actual); Principales focos por categoría/tipo/
-      departamento con tabla ordenable y drill-down; distribución por
-      estado y por departamento del backlog actual; envejecimiento en
-      buckets; "Requiere atención" (reglas heurísticas explícitas
-      sobre el backlog, no un SLA inventado). Todo calculado en
-      TypeScript en el servidor sobre una única consulta ya recortada
-      por RLS — sin funciones RPC nuevas, sin `service_role`. Para
-      Responsable de departamento se oculta el filtro y el desglose
-      por Departamento (solo vería su propia fila) y se indica qué
-      departamento está viendo; Empleado sigue sin acceso.
+      departamento con selector de dimensión compartido
+      (`FocosDimensionTabs`) entre un **donut en SVG propio**
+      (`pie-chart.tsx`, sin librería nueva — hasta 7 segmentos +
+      "Otros" agrupado, con leyenda, hover sincronizado gráfico↔leyenda
+      y drill-down, añadido el 2026-09-17 a petición del usuario: "que
+      sea con un estilo de quesitos") y la tabla ordenable de siempre
+      con drill-down; distribución por estado y por departamento del
+      backlog actual; envejecimiento en buckets; "Requiere atención"
+      (reglas heurísticas explícitas sobre el backlog, no un SLA
+      inventado). Todo calculado en TypeScript en el servidor sobre una
+      única consulta ya recortada por RLS — sin funciones RPC nuevas,
+      sin `service_role`. Para Responsable de departamento se oculta el
+      filtro y el desglose por Departamento (solo vería su propia fila)
+      y se indica qué departamento está viendo; Empleado sigue sin
+      acceso.
+      **Corregido (2026-09-17):** cambiar de pestaña en "Principales
+      focos" (y, por el mismo motivo, las pestañas de estado y las
+      cabeceras ordenables de `/tickets`, y los desplegables de
+      filtros de `/tickets`/`/informes`) devolvía el scroll al inicio
+      de la página — comportamiento por defecto de `<Link>` y
+      `router.replace()` en Next.js al navegar, aunque sea solo un
+      cambio de query params en la misma página. Se añadió
+      `scroll={false}` (Links) / `{ scroll: false }` (`router.replace`)
+      en los cuatro sitios donde ocurría.
+      **Corregido (2026-09-17), reportado con captura:** el `<aside>`
+      del `Sidebar` (`components/sidebar.tsx`) es `h-screen` (100vh)
+      pero vivía en flujo normal dentro de un contenedor `flex`, así
+      que en páginas más altas que el viewport (como `/informes`) se
+      desplazaba hacia arriba junto con el resto de la página al hacer
+      scroll, hasta desaparecer del todo. Se añadió `sticky top-0` para
+      que quede fijo mientras el contenido principal se desplaza —
+      mismo patrón de sidebar fijo + contenido con scroll propio que ya
+      es habitual en este tipo de apps.
 - [x] `/ajustes` reestructurado como landing de tarjetas → `Catálogos`
       (gestión de categorías/tipos/departamentos: alta, desactivar,
       borrar) y `Personas` (listado editable de todos los dados de

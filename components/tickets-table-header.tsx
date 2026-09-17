@@ -46,6 +46,7 @@ export function TicketsTableHeader({
         const content = col.field ? (
           <Link
             href={hrefFor(col.field)}
+            scroll={false}
             className={cn(
               "inline-flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-ink-muted transition-colors duration-150 hover:text-ink",
               col.align === "end" && "flex-row-reverse",

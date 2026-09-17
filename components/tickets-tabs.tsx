@@ -34,6 +34,7 @@ export function TicketsTabs({
           <Link
             key={tab.key}
             href={href}
+            scroll={false}
             className={cn(
               "rounded-btn px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-150",
               isActive ? "bg-surface-2 text-ink" : "text-ink-secondary hover:text-ink",

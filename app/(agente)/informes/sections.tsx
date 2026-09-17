@@ -133,6 +133,7 @@ export function FocosDimensionTabs({
         <Link
           key={d.key}
           href={hrefFor(d.key)}
+          scroll={false}
           className={`rounded-btn px-2.5 py-1 text-[12.5px] font-medium transition-colors duration-150 ${
             dimension === d.key ? "bg-surface-2 text-ink" : "text-ink-muted hover:text-ink"
           }`}

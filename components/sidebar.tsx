@@ -57,7 +57,7 @@ export function Sidebar({
   }
 
   return (
-    <aside className="flex h-screen w-[232px] shrink-0 flex-col border-r border-border bg-surface">
+    <aside className="sticky top-0 flex h-screen w-[232px] shrink-0 flex-col border-r border-border bg-surface">
       <div className="px-5 pb-5 pt-6">
         <p className="text-[13px] font-semibold leading-tight tracking-wide text-pando">
           PANDO

@@ -70,7 +70,7 @@ export function TicketsToolbar({
     if (value) params.set(key, value);
     else params.delete(key);
     startTransition(() => {
-      router.replace(`${pathname}?${params.toString()}`);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     });
   }
 
