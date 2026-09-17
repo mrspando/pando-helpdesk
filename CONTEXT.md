@@ -270,6 +270,15 @@ resto es más fácil.
       por `es_nota_interna`. Sustituida por `attachments_lectura`,
       que delega en `can_view_ticket()` (ver más abajo).
 
+- [x] Favicon propio: `app/icon.svg` (monograma "P" blanco sobre
+      cuadrado redondeado en `#111111`, el mismo negro de marca que
+      `--color-pando`), recogido automáticamente por Next.js vía
+      convención de archivo — no hizo falta tocar `metadata` en
+      `app/layout.tsx`. Sustituye al `app/favicon.ico` por defecto de
+      Next.js (el logo de Next/Turbopack), que se eliminó. No existe
+      todavía ningún logotipo real de Pando en el proyecto — este
+      monograma es un sustituto mínimo hasta que se aporte uno.
+
 **Pantallas de agente (`/tickets`, `/ajustes`) — implementadas
 siguiendo el sistema de diseño Pando de este documento**
 - [x] Cola de tickets (`/tickets`) como bandeja de trabajo: tabs por
