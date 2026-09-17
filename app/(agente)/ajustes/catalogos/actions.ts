@@ -6,15 +6,15 @@ import { getCurrentPersona } from "@/lib/supabase/persona";
 
 type Catalog = "categorias" | "tipos" | "departamentos";
 
-async function requireAgente() {
+async function requireAdmin() {
   const persona = await getCurrentPersona();
-  if (!persona || !persona.es_agente) {
+  if (!persona || persona.rol !== "admin") {
     throw new Error("No autorizado");
   }
 }
 
 export async function createCatalogItem(catalog: Catalog, nombre: string) {
-  await requireAgente();
+  await requireAdmin();
   const trimmed = nombre.trim();
   if (!trimmed) return { error: "El nombre es obligatorio" };
 
@@ -27,7 +27,7 @@ export async function createCatalogItem(catalog: Catalog, nombre: string) {
 }
 
 export async function toggleCatalogItemActiva(catalog: Catalog, id: number, activa: boolean) {
-  await requireAgente();
+  await requireAdmin();
   const supabase = await createClient();
   const { error } = await supabase.from(catalog).update({ activa }).eq("id", id);
 
@@ -37,7 +37,7 @@ export async function toggleCatalogItemActiva(catalog: Catalog, id: number, acti
 }
 
 export async function deleteCatalogItem(catalog: Catalog, id: number) {
-  await requireAgente();
+  await requireAdmin();
   const supabase = await createClient();
   const { error } = await supabase.from(catalog).delete().eq("id", id);
 

@@ -121,6 +121,7 @@ export default async function TicketDetailPage({ params }: PageProps<"/tickets/[
   const departamentoMap = Object.fromEntries((departamentos ?? []).map((d) => [d.id, d.nombre]));
 
   const solicitanteNombre = ticket.solicitante?.nombre ?? ticket.solicitante?.email ?? "—";
+  const canEdit = persona?.rol === "admin";
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
@@ -151,7 +152,7 @@ export default async function TicketDetailPage({ params }: PageProps<"/tickets/[
             <div className="flex-1 overflow-y-auto">
               <Conversation messages={conversation} />
             </div>
-            <Composer ticketId={ticket.id} />
+            {canEdit && <Composer ticketId={ticket.id} />}
           </TabsContent>
 
           <TabsContent value="cronologia" className="min-h-0 flex-1 overflow-y-auto">
@@ -166,6 +167,7 @@ export default async function TicketDetailPage({ params }: PageProps<"/tickets/[
 
         <PropertiesPanel
           ticketId={ticket.id}
+          canEdit={canEdit}
           estado={ticket.estado}
           prioridad={ticket.prioridad}
           categoriaId={ticket.categoria_id}

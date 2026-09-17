@@ -16,5 +16,5 @@ export default async function Home() {
     );
   }
 
-  redirect(persona.es_agente ? "/tickets" : "/mis-tickets");
+  redirect(persona.rol === "empleado" ? "/mis-tickets" : "/tickets");
 }

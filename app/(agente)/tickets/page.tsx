@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentPersona } from "@/lib/supabase/persona";
 import { PageHeader } from "@/components/page-header";
 import { TicketsTabs, type TicketTabKey } from "@/components/tickets-tabs";
 import { TicketsToolbar } from "@/components/tickets-toolbar";
@@ -39,6 +40,8 @@ export default async function TicketsPage({ searchParams }: PageProps<"/tickets"
   const q = typeof params.q === "string" ? params.q : undefined;
 
   const supabase = await createClient();
+  const persona = await getCurrentPersona();
+  const isAdmin = persona?.rol === "admin";
 
   const [
     { data: categorias },
@@ -90,6 +93,7 @@ export default async function TicketsPage({ searchParams }: PageProps<"/tickets"
         description="Gestiona y prioriza las incidencias internas"
         actions={
           <NewTicketDialog
+            isAdmin={isAdmin}
             personas={personas ?? []}
             categorias={categorias ?? []}
             tipos={tipos ?? []}

@@ -1150,5 +1150,3 @@ Si encuentras durante la implementación alguna contradicción entre este requis
 2. no perder datos;
 3. mantener el comportamiento existente de Admin;
 4. hacer el menor cambio arquitectónico necesario.
-
-No sustituyas la seguridad RLS por validaciones exclusivamente de frontend.

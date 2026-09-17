@@ -60,6 +60,7 @@ function CatalogPropertyRow({
   items,
   value,
   disabled,
+  canEdit,
   onSelect,
 }: {
   label: string;
@@ -67,9 +68,19 @@ function CatalogPropertyRow({
   items: Catalog[];
   value: number | null;
   disabled: boolean;
+  canEdit: boolean;
   onSelect: (id: number) => void;
 }) {
   const nombre = items.find((i) => i.id === value)?.nombre ?? emptyLabel;
+
+  if (!canEdit) {
+    return (
+      <PropertyRow label={label}>
+        <span className="text-[13px] font-medium text-ink">{nombre}</span>
+      </PropertyRow>
+    );
+  }
+
   return (
     <PropertyRow label={label}>
       <DropdownMenu>
@@ -97,6 +108,7 @@ function CatalogPropertyRow({
 
 export function PropertiesPanel({
   ticketId,
+  canEdit,
   estado,
   prioridad,
   categoriaId,
@@ -112,6 +124,7 @@ export function PropertiesPanel({
   resolvedAt,
 }: {
   ticketId: number;
+  canEdit: boolean;
   estado: Estado;
   prioridad: Prioridad;
   categoriaId: number | null;
@@ -144,47 +157,55 @@ export function PropertiesPanel({
 
       <div className="divide-y divide-border">
         <PropertyRow label="Estado">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button type="button" disabled={pending} className="flex items-center gap-1">
-                <StatusBadge estado={estado} />
-                <ChevronDown size={12} className="text-ink-muted" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {ESTADO_ORDER.map((value) => (
-                <DropdownMenuItem
-                  key={value}
-                  selected={value === estado}
-                  onSelect={() => handle(updateEstado(ticketId, value), `Estado cambiado a ${ESTADO_LABEL[value]}`)}
-                >
-                  {ESTADO_LABEL[value]}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {canEdit ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" disabled={pending} className="flex items-center gap-1">
+                  <StatusBadge estado={estado} />
+                  <ChevronDown size={12} className="text-ink-muted" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {ESTADO_ORDER.map((value) => (
+                  <DropdownMenuItem
+                    key={value}
+                    selected={value === estado}
+                    onSelect={() => handle(updateEstado(ticketId, value), `Estado cambiado a ${ESTADO_LABEL[value]}`)}
+                  >
+                    {ESTADO_LABEL[value]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <StatusBadge estado={estado} />
+          )}
         </PropertyRow>
 
         <PropertyRow label="Prioridad">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button type="button" disabled={pending} className="flex items-center gap-1">
-                <PriorityBadge prioridad={prioridad} />
-                <ChevronDown size={12} className="text-ink-muted" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {PRIORIDAD_ORDER.map((value) => (
-                <DropdownMenuItem
-                  key={value}
-                  selected={value === prioridad}
-                  onSelect={() => handle(updatePrioridad(ticketId, value), "Prioridad actualizada")}
-                >
-                  {PRIORIDAD_LABEL[value]}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {canEdit ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" disabled={pending} className="flex items-center gap-1">
+                  <PriorityBadge prioridad={prioridad} />
+                  <ChevronDown size={12} className="text-ink-muted" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {PRIORIDAD_ORDER.map((value) => (
+                  <DropdownMenuItem
+                    key={value}
+                    selected={value === prioridad}
+                    onSelect={() => handle(updatePrioridad(ticketId, value), "Prioridad actualizada")}
+                  >
+                    {PRIORIDAD_LABEL[value]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <PriorityBadge prioridad={prioridad} />
+          )}
         </PropertyRow>
 
         <CatalogPropertyRow
@@ -193,6 +214,7 @@ export function PropertiesPanel({
           items={categorias}
           value={categoriaId}
           disabled={pending}
+          canEdit={canEdit}
           onSelect={(id) => handle(updateCategoria(ticketId, id), "Categoría actualizada")}
         />
 
@@ -202,6 +224,7 @@ export function PropertiesPanel({
           items={tipos}
           value={tipoId}
           disabled={pending}
+          canEdit={canEdit}
           onSelect={(id) => handle(updateTipo(ticketId, id), "Tipo actualizado")}
         />
 
@@ -211,6 +234,7 @@ export function PropertiesPanel({
           items={departamentos}
           value={departamentoId}
           disabled={pending}
+          canEdit={canEdit}
           onSelect={(id) => handle(updateDepartamento(ticketId, id), "Departamento actualizado")}
         />
       </div>

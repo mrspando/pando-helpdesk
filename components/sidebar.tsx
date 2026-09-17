@@ -6,6 +6,7 @@ import { Inbox, BarChart3, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { signOut } from "@/lib/supabase/actions";
+import type { Rol } from "@/lib/roles";
 
 type NavItem = {
   href: string;
@@ -26,10 +27,12 @@ export function Sidebar({
   nombre,
   email,
   departamento,
+  rol,
 }: {
   nombre: string | null;
   email: string;
   departamento: string | null;
+  rol: Rol;
 }) {
   const pathname = usePathname();
 
@@ -64,8 +67,12 @@ export function Sidebar({
 
       <nav className="flex-1 space-y-0.5 px-3">
         {AGENTE_NAV.map(navLink)}
-        <div className="my-2 h-px bg-border" />
-        {AGENTE_NAV_SECONDARY.map(navLink)}
+        {rol === "admin" && (
+          <>
+            <div className="my-2 h-px bg-border" />
+            {AGENTE_NAV_SECONDARY.map(navLink)}
+          </>
+        )}
       </nav>
 
       <div className="border-t border-border px-3 py-3">

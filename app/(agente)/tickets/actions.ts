@@ -8,20 +8,27 @@ import type { Prioridad } from "@/lib/format";
 
 export async function createTicket(_prevState: { error: string | null } | undefined, formData: FormData) {
   const persona = await getCurrentPersona();
-  if (!persona || !persona.es_agente) {
+  if (!persona) {
     throw new Error("No autorizado");
   }
 
   const titulo = String(formData.get("titulo") ?? "").trim();
   const descripcion = String(formData.get("descripcion") ?? "").trim();
-  const solicitanteId = String(formData.get("solicitante_id") ?? "").trim();
   const categoriaIdRaw = String(formData.get("categoria_id") ?? "").trim();
   const tipoIdRaw = String(formData.get("tipo_id") ?? "").trim();
   const departamentoIdRaw = String(formData.get("departamento_id") ?? "").trim();
   const prioridad = String(formData.get("prioridad") ?? "normal") as Prioridad;
 
+  // Crear un ticket es posible para cualquier rol, pero solo Admin puede
+  // elegir el solicitante — el resto siempre crea el ticket a su propio
+  // nombre (así lo permite tickets_propios_insert en RLS). Nunca se
+  // confía en el solicitante_id que venga del formulario para roles
+  // que no sean Admin.
+  const solicitanteId =
+    persona.rol === "admin" ? String(formData.get("solicitante_id") ?? "").trim() : persona.id;
+
   if (!titulo) return { error: "El título es obligatorio" };
-  if (!solicitanteId) return { error: "Elige un solicitante" };
+  if (persona.rol === "admin" && !solicitanteId) return { error: "Elige un solicitante" };
 
   const supabase = await createClient();
   const { data, error } = await supabase

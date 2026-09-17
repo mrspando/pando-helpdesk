@@ -10,7 +10,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { updatePersonaNombre, updatePersonaDepartamento, togglePersonaFlag } from "./actions";
+import { ROL_LABEL, ROL_ORDER, type Rol } from "@/lib/roles";
+import {
+  updatePersonaNombre,
+  updatePersonaDepartamento,
+  updatePersonaRol,
+  togglePersonaActivo,
+} from "./actions";
 
 type Departamento = { id: number; nombre: string };
 
@@ -19,7 +25,7 @@ type Persona = {
   nombre: string | null;
   email: string;
   departamento_id: number | null;
-  es_agente: boolean;
+  rol: Rol;
   activo: boolean;
 };
 
@@ -137,6 +143,50 @@ function DepartamentoField({
   );
 }
 
+function RolField({
+  personaId,
+  rol,
+  disabled,
+  onError,
+}: {
+  personaId: string;
+  rol: Rol;
+  disabled: boolean;
+  onError: (message: string) => void;
+}) {
+  const [, startTransition] = useTransition();
+
+  function select(value: Rol) {
+    if (value === rol) return;
+    startTransition(async () => {
+      const { error } = await updatePersonaRol(personaId, value);
+      if (error) onError(error);
+    });
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          className="flex items-center gap-1 rounded-[6px] px-1.5 py-1 text-[13px] font-medium text-ink hover:bg-surface-hover"
+        >
+          {ROL_LABEL[rol]}
+          <ChevronDown size={12} className="text-ink-muted" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        {ROL_ORDER.map((value) => (
+          <DropdownMenuItem key={value} selected={value === rol} onSelect={() => select(value)}>
+            {ROL_LABEL[value]}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function PersonasManager({
   personas,
   departamentos,
@@ -155,9 +205,9 @@ export function PersonasManager({
     );
   }, [personas, query]);
 
-  function handleToggle(personaId: string, field: "es_agente" | "activo", value: boolean) {
+  function handleToggleActivo(personaId: string, value: boolean) {
     startTransition(async () => {
-      const { error } = await togglePersonaFlag(personaId, field, value);
+      const { error } = await togglePersonaActivo(personaId, value);
       if (error) toast.error(error);
     });
   }
@@ -175,11 +225,11 @@ export function PersonasManager({
       </div>
 
       <div className="rounded-card border border-border">
-        <div className="grid grid-cols-[1.2fr_1.4fr_1fr_auto_auto] gap-3 border-b border-border bg-surface-2 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+        <div className="grid grid-cols-[1.1fr_1.3fr_0.9fr_auto_auto] gap-3 border-b border-border bg-surface-2 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
           <span>Nombre</span>
           <span>Email</span>
           <span>Departamento</span>
-          <span>Agente</span>
+          <span>Rol</span>
           <span>Activo</span>
         </div>
 
@@ -191,7 +241,7 @@ export function PersonasManager({
           {filtered.map((p) => (
             <div
               key={p.id}
-              className="grid grid-cols-[1.2fr_1.4fr_1fr_auto_auto] items-center gap-3 px-3 py-1.5"
+              className="grid grid-cols-[1.1fr_1.3fr_0.9fr_auto_auto] items-center gap-3 px-3 py-1.5"
             >
               <NombreField personaId={p.id} value={p.nombre ?? ""} disabled={pending} />
               <span className="truncate text-[12.5px] text-ink-muted">{p.email}</span>
@@ -201,19 +251,13 @@ export function PersonasManager({
                 departamentos={departamentos}
                 disabled={pending}
               />
-              <FlagPill
-                active={p.es_agente}
-                activeLabel="Agente"
-                inactiveLabel="Solicitante"
-                disabled={pending}
-                onClick={() => handleToggle(p.id, "es_agente", !p.es_agente)}
-              />
+              <RolField personaId={p.id} rol={p.rol} disabled={pending} onError={(m) => toast.error(m)} />
               <FlagPill
                 active={p.activo}
                 activeLabel="Activo"
                 inactiveLabel="Inactivo"
                 disabled={pending}
-                onClick={() => handleToggle(p.id, "activo", !p.activo)}
+                onClick={() => handleToggleActivo(p.id, !p.activo)}
               />
             </div>
           ))}

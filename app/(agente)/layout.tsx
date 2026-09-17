@@ -13,7 +13,7 @@ export default async function AgenteLayout({
     redirect("/login");
   }
 
-  if (!persona.es_agente) {
+  if (persona.rol === "empleado") {
     redirect("/mis-tickets");
   }
 
@@ -23,6 +23,7 @@ export default async function AgenteLayout({
         nombre={persona.nombre}
         email={persona.email}
         departamento={persona.departamento}
+        rol={persona.rol}
       />
       <main className="min-w-0 flex-1">{children}</main>
     </div>

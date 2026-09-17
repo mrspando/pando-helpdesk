@@ -1,18 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Rol } from "@/lib/roles";
 
 export type Persona = {
   id: string;
   nombre: string | null;
   email: string;
   departamento: string | null;
-  es_agente: boolean;
+  rol: Rol;
 };
 
 type PersonaRow = {
   id: string;
   nombre: string | null;
   email: string;
-  es_agente: boolean;
+  rol: Rol;
   departamento: { nombre: string } | null;
 };
 
@@ -26,7 +27,7 @@ export async function getCurrentPersona(): Promise<Persona | null> {
 
   const { data: persona } = await supabase
     .from("personas")
-    .select("id, nombre, email, es_agente, departamento:departamentos(nombre)")
+    .select("id, nombre, email, rol, departamento:departamentos(nombre)")
     .eq("auth_user_id", user.id)
     .single<PersonaRow>();
 
@@ -36,7 +37,7 @@ export async function getCurrentPersona(): Promise<Persona | null> {
     id: persona.id,
     nombre: persona.nombre,
     email: persona.email,
-    es_agente: persona.es_agente,
+    rol: persona.rol,
     departamento: persona.departamento?.nombre ?? null,
   };
 }

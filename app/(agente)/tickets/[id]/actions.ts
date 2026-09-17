@@ -5,16 +5,16 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentPersona } from "@/lib/supabase/persona";
 import type { Estado, Prioridad } from "@/lib/format";
 
-async function requireAgente() {
+async function requireAdmin() {
   const persona = await getCurrentPersona();
-  if (!persona || !persona.es_agente) {
+  if (!persona || persona.rol !== "admin") {
     throw new Error("No autorizado");
   }
   return persona;
 }
 
 export async function updateEstado(ticketId: number, estado: Estado) {
-  await requireAgente();
+  await requireAdmin();
   const supabase = await createClient();
   const { error } = await supabase.from("tickets").update({ estado }).eq("id", ticketId);
   revalidatePath(`/tickets/${ticketId}`);
@@ -24,7 +24,7 @@ export async function updateEstado(ticketId: number, estado: Estado) {
 }
 
 export async function updatePrioridad(ticketId: number, prioridad: Prioridad) {
-  await requireAgente();
+  await requireAdmin();
   const supabase = await createClient();
   const { error } = await supabase.from("tickets").update({ prioridad }).eq("id", ticketId);
   revalidatePath(`/tickets/${ticketId}`);
@@ -34,7 +34,7 @@ export async function updatePrioridad(ticketId: number, prioridad: Prioridad) {
 }
 
 export async function updateCategoria(ticketId: number, categoriaId: number) {
-  await requireAgente();
+  await requireAdmin();
   const supabase = await createClient();
   const { error } = await supabase
     .from("tickets")
@@ -47,7 +47,7 @@ export async function updateCategoria(ticketId: number, categoriaId: number) {
 }
 
 export async function updateTipo(ticketId: number, tipoId: number) {
-  await requireAgente();
+  await requireAdmin();
   const supabase = await createClient();
   const { error } = await supabase.from("tickets").update({ tipo_id: tipoId }).eq("id", ticketId);
   revalidatePath(`/tickets/${ticketId}`);
@@ -57,7 +57,7 @@ export async function updateTipo(ticketId: number, tipoId: number) {
 }
 
 export async function updateDepartamento(ticketId: number, departamentoId: number) {
-  await requireAgente();
+  await requireAdmin();
   const supabase = await createClient();
   const { error } = await supabase
     .from("tickets")
@@ -74,7 +74,7 @@ export async function sendMessage(
   cuerpoTexto: string,
   esNotaInterna: boolean,
 ) {
-  const persona = await requireAgente();
+  const persona = await requireAdmin();
   const body = cuerpoTexto.trim();
   if (!body) return { error: "El mensaje está vacío" };
 

@@ -10,7 +10,7 @@ export default async function PersonasPage() {
   const [{ data: personas, error }, { data: departamentos }] = await Promise.all([
     supabase
       .from("personas")
-      .select("id, nombre, email, departamento_id, es_agente, activo")
+      .select("id, nombre, email, departamento_id, rol, activo")
       .order("nombre"),
     supabase.from("departamentos").select("id, nombre").order("orden"),
   ]);

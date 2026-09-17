@@ -14,7 +14,7 @@ export default async function SolicitanteLayout({
     redirect("/login");
   }
 
-  if (persona.es_agente) {
+  if (persona.rol !== "empleado") {
     redirect("/tickets");
   }
 
