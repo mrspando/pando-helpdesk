@@ -9,11 +9,13 @@ import { PERIODO_LABEL, type PeriodoKey } from "@/lib/informes/periodo";
 import { getInformesData, type Dimension, type InformesFiltros } from "./data";
 import { FiltersBar } from "./filters-bar";
 import { EvolutionChart } from "./evolution-chart";
+import { FocosPieChart } from "./pie-chart";
 import {
   SectionTitle,
   KpiRow,
   MetricGroup,
   ComparisonRow,
+  FocosDimensionTabs,
   FocosTable,
   EstadoDistribution,
   AgingBuckets,
@@ -202,12 +204,19 @@ export default async function InformesPage({ searchParams }: PageProps<"/informe
 
           <section className="border-t border-border pt-6">
             <SectionTitle>Principales focos</SectionTitle>
-            <FocosTable
+            <FocosDimensionTabs
               dimension={filtros.dimension}
-              rows={data.focos}
               otherParams={otherParams}
               mostrarDepartamento={mostrarDepartamento}
             />
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+              <div className="shrink-0 lg:w-[380px]">
+                <FocosPieChart rows={data.focos} dimension={filtros.dimension} otherParams={otherParams} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <FocosTable dimension={filtros.dimension} rows={data.focos} />
+              </div>
+            </div>
           </section>
 
           <section className="grid grid-cols-2 gap-8 border-t border-border pt-6">

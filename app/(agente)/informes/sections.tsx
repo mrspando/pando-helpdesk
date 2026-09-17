@@ -110,14 +110,12 @@ const DIMENSIONES: { key: Dimension; label: string }[] = [
   { key: "tipo", label: "Tipo" },
 ];
 
-export function FocosTable({
+export function FocosDimensionTabs({
   dimension,
-  rows,
   otherParams,
   mostrarDepartamento,
 }: {
   dimension: Dimension;
-  rows: FocoRow[];
   otherParams: Record<string, string | undefined>;
   mostrarDepartamento: boolean;
 }) {
@@ -129,6 +127,30 @@ export function FocosTable({
     return `/informes?${params.toString()}`;
   }
 
+  return (
+    <div className="mb-4 flex items-center gap-1">
+      {DIMENSIONES.filter((d) => d.key !== "departamento" || mostrarDepartamento).map((d) => (
+        <Link
+          key={d.key}
+          href={hrefFor(d.key)}
+          className={`rounded-btn px-2.5 py-1 text-[12.5px] font-medium transition-colors duration-150 ${
+            dimension === d.key ? "bg-surface-2 text-ink" : "text-ink-muted hover:text-ink"
+          }`}
+        >
+          {d.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+export function FocosTable({
+  dimension,
+  rows,
+}: {
+  dimension: Dimension;
+  rows: FocoRow[];
+}) {
   function drillHref(row: FocoRow) {
     if (row.id === -1) return null; // "Sin clasificar" no tiene id filtrable
     const params = new URLSearchParams();
@@ -138,20 +160,6 @@ export function FocosTable({
 
   return (
     <div>
-      <div className="mb-3 flex items-center gap-1">
-        {DIMENSIONES.filter((d) => d.key !== "departamento" || mostrarDepartamento).map((d) => (
-          <Link
-            key={d.key}
-            href={hrefFor(d.key)}
-            className={`rounded-btn px-2.5 py-1 text-[12.5px] font-medium transition-colors duration-150 ${
-              dimension === d.key ? "bg-surface-2 text-ink" : "text-ink-muted hover:text-ink"
-            }`}
-          >
-            {d.label}
-          </Link>
-        ))}
-      </div>
-
       {rows.length === 0 ? (
         <p className="text-[12.5px] text-ink-muted">Sin tickets en este periodo.</p>
       ) : (
