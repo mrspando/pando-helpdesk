@@ -63,12 +63,33 @@ abiertos** (confirmadas por el usuario antes de implementar):
    ningún sitio, así que la parte de "revisa las policies del bucket"
    no aplica por ahora.
 
+**Hecho — `/mis-tickets` (autoservicio de empleado), en dos pasadas:**
+- Primera pasada: listado propio + creación (sin selector de
+  solicitante ni de prioridad) + ficha básica de solo lectura con
+  conversación y una caja simple para añadir mensajes
+  (`replyToOwnTicket`, inserta como `direccion = 'entrante'`).
+- Segunda pasada (2026-09-17, a petición del usuario — "dentro del
+  ticket tiene que ver lo que ve el admin, sin poder editar nada y
+  dejando la función de poder escribir"): la ficha `/mis-tickets/[id]`
+  se reconstruyó para reutilizar directamente los mismos componentes
+  que la ficha de agente — `PropertiesPanel` (con `canEdit={false}`,
+  ya soportaba ese modo desde la Fase 3), pestañas
+  Conversación/Cronología y `Timeline` — en vez de mantener una versión
+  simplificada aparte. Esto es exactamente el "modo read only"
+  descrito más abajo para Gerencia/Dirección/Empleado, ahora también
+  aplicado a la vista de un empleado sobre su propio ticket. El
+  composer de agente (Responder/Nota interna) sigue oculto; se
+  mantiene el `ReplyForm` propio del solicitante, sin tocar. Requirió
+  una política nueva, `events_propios_select`
+  (`supabase/migrations/20260917150000_events_propios_select.sql`):
+  `events` no tenía ninguna política para el propio solicitante, solo
+  para admin/Gerencia/Dirección. También se enriqueció el listado
+  `/mis-tickets` con prioridad, tipo, departamento y fecha de última
+  actualización (antes solo mostraba categoría y fecha de creación).
+
 **Explícitamente aparcado / fuera de esta pasada:**
 - Tests de seguridad automatizados contra RLS — omitidos a petición
   del usuario.
-- `/mis-tickets` (empleado): la RLS ya permite que un empleado cree y
-  lea sus propios tickets, pero no existe ninguna pantalla que lo use
-  todavía (sigue siendo el placeholder "Próximamente").
 - Que Gerencia/Responsable de departamento puedan crear tickets **en
   nombre de otra persona** (hoy solo `admin` puede).
 - Migrar `categorias_agente`/`tipos_agente`/`departamentos_agente`/

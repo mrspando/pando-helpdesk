@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Inbox } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { StatusBadge } from "@/components/ui/badge";
+import { PriorityBadge, StatusBadge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatRelativeTime, type Estado } from "@/lib/format";
+import { formatRelativeTime, type Estado, type Prioridad } from "@/lib/format";
 import { NewTicketDialog } from "./new-ticket-dialog";
 
 type TicketRow = {
@@ -11,8 +11,12 @@ type TicketRow = {
   ref: string | null;
   titulo: string;
   estado: Estado;
+  prioridad: Prioridad;
   created_at: string;
+  updated_at: string;
   categoria: { nombre: string } | null;
+  tipo: { nombre: string } | null;
+  departamento: { nombre: string } | null;
 };
 
 export default async function MisTicketsPage() {
@@ -21,7 +25,10 @@ export default async function MisTicketsPage() {
   const [{ data: tickets, error }, { data: categorias }, { data: tipos }] = await Promise.all([
     supabase
       .from("tickets")
-      .select("id, ref, titulo, estado, created_at, categoria:categorias(nombre)")
+      .select(
+        `id, ref, titulo, estado, prioridad, created_at, updated_at,
+         categoria:categorias(nombre), tipo:tipos(nombre), departamento:departamentos(nombre)`,
+      )
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .returns<TicketRow[]>(),
@@ -60,17 +67,23 @@ export default async function MisTicketsPage() {
             <Link
               key={ticket.id}
               href={`/mis-tickets/${ticket.id}`}
-              className="flex items-center justify-between gap-3 px-4 py-3 transition-colors duration-150 hover:bg-surface-hover"
+              className="flex items-center justify-between gap-4 px-4 py-3 transition-colors duration-150 hover:bg-surface-hover"
             >
               <div className="min-w-0">
                 <p className="truncate text-[14px] font-medium text-ink">{ticket.titulo}</p>
                 <p className="mt-0.5 truncate text-[12px] text-ink-muted">
                   <span className="font-mono">{ticket.ref ?? `PANDO-${ticket.id}`}</span>
-                  {ticket.categoria?.nombre && <> · {ticket.categoria.nombre}</>} ·{" "}
-                  {formatRelativeTime(ticket.created_at)}
+                  {ticket.categoria?.nombre && <> · {ticket.categoria.nombre}</>}
+                  {ticket.tipo?.nombre && <> · {ticket.tipo.nombre}</>}
+                  {ticket.departamento?.nombre && <> · {ticket.departamento.nombre}</>}
+                  {" · actualizado "}
+                  {formatRelativeTime(ticket.updated_at)}
                 </p>
               </div>
-              <StatusBadge estado={ticket.estado} />
+              <div className="flex shrink-0 items-center gap-2">
+                <PriorityBadge prioridad={ticket.prioridad} />
+                <StatusBadge estado={ticket.estado} />
+              </div>
             </Link>
           ))}
         </div>

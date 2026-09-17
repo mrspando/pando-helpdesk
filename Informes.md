@@ -1,4 +1,125 @@
-# Pando Helpdesk — Rediseño de `/informes`
+# Estado de implementación (2026-09-17)
+
+Implementado de una vez, siguiendo el documento completo. El texto
+original se conserva íntegro debajo.
+
+**Arquitectura elegida:** una sola consulta a `tickets` por carga de
+página (con los filtros de departamento/categoría/tipo/prioridad ya
+aplicados en SQL vía RLS + `.eq()`), y todo el cálculo — KPIs,
+comparación con periodo anterior, series temporales, focos,
+distribuciones, envejecimiento, "requiere atención" — en funciones
+puras de TypeScript sobre ese único array, en el servidor
+(`app/(agente)/informes/data.ts`). Se descartó deliberadamente crear
+funciones RPC/SQL nuevas: con RPC hay que auditar a mano que no se
+salte RLS de Responsable de departamento (riesgo que señala el propio
+documento varias veces); con el cliente normal de Supabase, la
+seguridad ya está garantizada por las políticas RLS de la Fase 1, sin
+código adicional que pueda tener un fallo. Al volumen real de esta
+empresa (~73 empleados) esto es más que suficiente; si el número de
+tickets creciera a decenas de miles, sí convendría mover la agregación
+a SQL.
+
+**Archivos nuevos:**
+- `lib/informes/metrics.ts` — definiciones centralizadas: qué es
+  backlog (`nuevo`/`triaje`/`en_curso`/`esperando_*`; **`resuelto` no
+  cuenta como backlog** — ver justificación abajo), mediana/media,
+  duración neta, formato de duración, buckets de antigüedad.
+- `lib/informes/periodo.ts` — resolución de periodo (7/30/90 días,
+  año) y su periodo anterior comparable, agrupación temporal
+  (día/semana/mes) y generación de claves de "cubo" sin huecos.
+- `app/(agente)/informes/data.ts` — la consulta y todo el cálculo.
+- `app/(agente)/informes/filters-bar.tsx`, `evolution-chart.tsx`,
+  `sections.tsx` — UI (filtros, gráfica SVG propia, tablas/listas).
+- `app/(agente)/informes/page.tsx` — reescrita por completo.
+
+**Sin migraciones** — todo lectura sobre columnas ya existentes.
+
+## Definición exacta de cada KPI
+
+- **Backlog / "abierto"**: `estado NOT IN ('resuelto','cerrado','cancelado')`.
+  Decisión explícita: `resuelto` no es backlog porque desde la
+  perspectiva de carga de trabajo de IT el esfuerzo ya está hecho; si
+  se reabre, el propio trigger de auditoría lo devuelve a un estado
+  activo y vuelve a contar solo.
+- **Sin clasificar**: `categoria_id IS NULL OR tipo_id IS NULL OR departamento_id IS NULL`.
+- **Tickets creados (periodo)**: `created_at` dentro del rango.
+- **Tickets resueltos (periodo)**: `resolved_at` dentro del rango
+  (venga de cuando venga su creación).
+- **Primera respuesta**: entre los tickets **creados** en el periodo
+  que ya tienen `first_response_at`, mediana/media de
+  `first_response_at - created_at`. Ancla en creación porque responde
+  a "de lo que entró este periodo, qué tan rápido respondimos".
+- **Resolución**: entre los tickets **resueltos** en el periodo,
+  mediana/media de `resolved_at - created_at`. Ancla en resolución
+  porque responde a "de lo que cerramos este periodo, cuánto tardó" —
+  es intencionadamente una anchoring distinta a la de primera
+  respuesta, documentada aquí para que no parezca inconsistencia.
+- **Resolución neta**: `(resolved_at - created_at) - espera_segundos`,
+  sobre el mismo conjunto que "Resolución".
+- **Tasa de reapertura (periodo)**: de los tickets resueltos en el
+  periodo, % con `reopen_count > 0`.
+- **Variación de backlog**: creados − resueltos, ambos del periodo.
+- **Comparación con periodo anterior**: mismo cálculo sobre el tramo
+  inmediatamente anterior de igual duración. Con "Este año", el
+  periodo anterior es el mismo tramo del año pasado. Si el periodo
+  anterior no tiene ningún ticket creado ni resuelto, se muestra "Sin
+  comparación" en vez de dividir por cero.
+- **Envejecimiento**: antigüedad (`ahora - created_at`) de los tickets
+  en backlog ahora mismo, en los buckets &lt;1d/1-3d/3-7d/7-14d/&gt;14d.
+- **Requiere atención**: reglas fijas sobre el backlog actual —
+  urgente; alta prioridad con más de 3 días; sin primera respuesta
+  pasadas 4 horas; más de 2 días en Nuevo/Triaje; sin clasificar;
+  reabierto; más de 14 días de antigüedad. Sin SLA inventado, sin
+  puntuación — un ticket puede aparecer con varios motivos a la vez,
+  máximo 10 en la lista, ordenados por antigüedad.
+- **Evolución del backlog**: reconstruida desde `events` (`tipo =
+  'estado'`), no contando estados actuales — para cada día/semana/mes
+  del periodo, se reproduce el estado de cada ticket en ese instante
+  siguiendo su historial real de transiciones.
+
+## Comportamiento por rol
+
+- **Admin / Dirección General**: ven todo lo que su RLS permite (todo,
+  en ambos casos) — filtro de Departamento visible, desglose por
+  Departamento disponible.
+- **Responsable de departamento**: el filtro de Departamento no se
+  muestra (solo puede ver el suyo); se indica de forma discreta debajo
+  de la cabecera qué departamento está viendo; "Desglose por
+  Departamento" y "Por departamento" en Distribuciones se ocultan
+  porque con un único departamento visible no aportarían nada. El
+  resto de KPIs, series y tablas se calculan exclusivamente sobre lo
+  que su sesión de Supabase puede leer — no hay ningún filtrado
+  adicional en el frontend, la propia consulta ya viene recortada por
+  RLS.
+- **Empleado**: sigue sin acceso a `/informes` (redirigido por el
+  layout de agente, sin cambios).
+
+No se usa `service_role` en ningún punto.
+
+## Limitaciones y simplificaciones conocidas
+
+- **Rango personalizado de fechas**: no implementado — el documento lo
+  marcaba como opcional ("si encaja bien"); los 4 periodos fijos
+  cubren el caso de uso real de momento.
+- **Drill-down "Abiertos" (Estado actual)**: enlaza a `/tickets` sin
+  filtro de estado, porque la cola de tickets no tiene un bucket único
+  de "todo el backlog" (sus pestañas son Nuevos/En curso/Esperando/
+  Resueltos/Todos) — añadir ese bucket sería tocar `/tickets`, fuera
+  del alcance de este encargo. "Esperando" y "Alta/urgente" sí enlazan
+  con el filtro exacto porque esos sí existen ya en `/tickets`.
+- **Envejecimiento del backlog en la reconstrucción histórica**: con
+  cientos de tickets y periodos largos (año), el cálculo recorre cada
+  ticket por cada punto temporal — perfectamente asumible al volumen
+  real de esta empresa, pero si algún día crece a varios miles de
+  tickets convendría mover esa reconstrucción a una consulta SQL
+  agregada en vez de a JavaScript en el servidor.
+- **Gráficas**: SVG propio, sin librería nueva — no había ninguna
+  instalada en el proyecto y añadir una para dos gráficas de línea no
+  se justificaba.
+
+---
+
+
 
 ## Objetivo
 

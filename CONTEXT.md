@@ -290,8 +290,28 @@ siguiendo el sistema de diseño Pando de este documento**
       los `events` del ticket (creación, cada cambio de estado con su
       badge, prioridad, categoría, tipo, departamento) con quién y
       cuándo, de un vistazo
-- [x] `/informes`: resumen de los últimos 30 días (total, tiempo medio
-      de 1ª respuesta, tickets por categoría)
+- [x] `/informes` reconstruido por completo según `Informes.md` (ver
+      cabecera de ese documento para el detalle de KPIs y decisiones):
+      selector de periodo (7/30/90 días, año) con comparación contra
+      el periodo anterior; Estado actual (abiertos, alta/urgente,
+      esperando, sin clasificar, más antiguo abierto — con
+      drill-down a `/tickets` filtrado donde existe pestaña
+      equivalente); Rendimiento del periodo (creados/resueltos,
+      variación de backlog, primera respuesta y resolución en
+      mediana+media, resolución neta sin esperas, tasa de
+      reapertura); dos gráficas de evolución temporal en SVG propio
+      (sin librería nueva) — entradas/resoluciones y backlog
+      reconstruido día a día desde `events` (no aproximado desde el
+      estado actual); Principales focos por categoría/tipo/
+      departamento con tabla ordenable y drill-down; distribución por
+      estado y por departamento del backlog actual; envejecimiento en
+      buckets; "Requiere atención" (reglas heurísticas explícitas
+      sobre el backlog, no un SLA inventado). Todo calculado en
+      TypeScript en el servidor sobre una única consulta ya recortada
+      por RLS — sin funciones RPC nuevas, sin `service_role`. Para
+      Responsable de departamento se oculta el filtro y el desglose
+      por Departamento (solo vería su propia fila) y se indica qué
+      departamento está viendo; Empleado sigue sin acceso.
 - [x] `/ajustes` reestructurado como landing de tarjetas → `Catálogos`
       (gestión de categorías/tipos/departamentos: alta, desactivar,
       borrar) y `Personas` (listado editable de todos los dados de
@@ -301,23 +321,36 @@ siguiendo el sistema de diseño Pando de este documento**
       (FK `RESTRICT` a propósito, para no perder historial) — sugiere
       desactivar en su lugar. Bloqueado también borrarse a uno mismo o
       al último `admin` activo.
-- [x] `/mis-tickets` (empleado) — portal de autoservicio mínimo:
-      listado de los tickets propios, botón "Nuevo ticket" (sin
-      selector de solicitante ni de prioridad — la prioridad la sigue
-      fijando solo el agente), y ficha `/mis-tickets/[id]` de solo
-      lectura con la conversación y una caja para añadir más mensajes
-      (inserta como `direccion = 'entrante'`, igual que simularía un
-      correo entrante). No hay edición de propiedades ni notas
-      internas en esta vista — eso sigue siendo exclusivo de `admin`
-      en `/tickets/[id]`. `tickets_propios_insert`/`_select` y
+- [x] `/mis-tickets` (empleado) — portal de autoservicio: listado de
+      los tickets propios con prioridad, estado, categoría, tipo,
+      departamento y fecha de última actualización visibles por fila
+      (antes solo mostraba categoría + fecha de creación); botón
+      "Nuevo ticket" (sin selector de solicitante ni de prioridad — la
+      prioridad la sigue fijando solo el agente). La ficha
+      `/mis-tickets/[id]` reutiliza los mismos componentes que la
+      ficha de agente — `PropertiesPanel` en modo solo lectura
+      (`canEdit={false}`), pestañas Conversación/Cronología y
+      `Timeline` — así que un empleado ve exactamente la misma
+      información que un agente sobre su propio ticket (estado,
+      prioridad, categoría, tipo, departamento, fechas de triaje/1ª
+      respuesta/resolución, e historial completo de cambios), solo que
+      sin controles de edición y sin el composer de agente
+      (Responder/Nota interna). Mantiene su propia caja simple para
+      añadir mensajes (`ReplyForm` → `replyToOwnTicket`, inserta como
+      `direccion = 'entrante'`, igual que simularía un correo
+      entrante) — no ve ni puede crear notas internas.
+      `tickets_propios_insert`/`_select` y
       `messages_propios_insert`/`_select` ya lo permitían desde el
-      baseline. Se añadió una política nueva,
-      `personas_visible_por_conversacion`, para que el solicitante vea
-      el nombre real de quien le responde (antes cualquier fila de
-      `personas` que no fuera la propia quedaba oculta por
-      `personas_self`, y se veía el genérico "Agente") — solo abre la
-      fila de quien te haya escrito de verdad en un ticket tuyo, no el
-      directorio completo de empleados.
+      baseline. Se añadieron dos políticas: `personas_visible_por_conversacion`,
+      para que el solicitante vea el nombre real de quien le responde
+      (antes cualquier fila de `personas` que no fuera la propia
+      quedaba oculta por `personas_self`, y se veía el genérico
+      "Agente") — solo abre la fila de quien te haya escrito de verdad
+      en un ticket tuyo, no el directorio completo de empleados — y
+      `events_propios_select`, para que pueda leer la Cronología de
+      sus propios tickets (antes `events` solo tenía políticas para
+      admin y Gerencia/Dirección, ningún solicitante podía leer ni un
+      evento).
 
 **Roles y permisos (ver `PERMISOS.md` para el detalle completo,
 incluida la matriz de comportamiento esperado)**

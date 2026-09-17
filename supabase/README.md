@@ -89,6 +89,12 @@ reflejaba:
   borrar una fila desde la app hasta ahora, ni siquiera Admin. El
   borrado sigue protegido por las FK `RESTRICT` de `tickets`/`messages`/
   `events` (no se puede borrar a nadie con historial asociado).
+- `20260917150000_events_propios_select.sql` — política
+  `events_propios_select` (`FOR SELECT`, propio solicitante). La ficha
+  de `/mis-tickets/[id]` pasa a reutilizar el mismo `PropertiesPanel` y
+  `Timeline` de solo lectura que ve un agente, y `events` no tenía
+  ninguna política que cubriera al solicitante de sus propios tickets
+  (solo admin y Gerencia/Dirección podían leer esa tabla).
 
 ## Próximos cambios de esquema
 
