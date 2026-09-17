@@ -120,6 +120,9 @@ servidor (no solo ocultas en la sidebar): cualquier rol que no sea
 - **`messages`** — hilo de conversación de cada ticket; distingue
   mensajes entrantes/salientes y notas internas (nunca visibles para
   el solicitante); `graph_message_id` único para idempotencia.
+  `destinatarios`/`copia` (`text[]`, solo en salientes no-nota) guardan
+  a quién se envió realmente cada respuesta — el composer permite
+  añadir destinatarios manuales y CC más allá del solicitante.
 - **`attachments`** — ficheros colgados de cada mensaje.
 - **`events`** — auditoría automática (vía triggers) de cada cambio de
   estado/prioridad/categoría/tipo/departamento/asignación. Es la
@@ -134,14 +137,28 @@ Estados de ticket: `nuevo → triaje → en_curso → esperando_usuario /
 esperando_proveedor → resuelto → cerrado` (o `cancelado`). Reapertura
 posible tras cierre, cuenta en `reopen_count`.
 
-## Flujo de correo (diseño, aún no implementado)
+## Flujo de correo
 
-- **Entrada:** cron cada ~2 min leyendo mensajes no leídos del buzón
-  compartido vía Graph. Se descartan webhooks de Graph para v1 (caducan
-  cada ~3 días, complejidad innecesaria a este volumen).
-- **Salida:** `sendMail` desde el mismo buzón, respondiendo sobre el
-  `conversationId` original. Asunto lleva además `[PANDO-123]` como
-  red de seguridad para el threading.
+- **Entrada — sin implementar.** cron cada ~2 min leyendo mensajes no
+  leídos del buzón compartido vía Graph. Se descartan webhooks de
+  Graph para v1 (caducan cada ~3 días, complejidad innecesaria a este
+  volumen).
+- **Salida — implementada.** `lib/graph/mail.ts` llama a `sendMail`
+  (acción, no crear-borrador-y-enviar) desde el composer de
+  "Responder" en la ficha de ticket. **`it@pando.es` es solo de
+  recepción** — cada respuesta se envía "como" el email de la persona
+  que la escribe (`persona.email`, no un buzón fijo), para que llegue
+  al solicitante desde el agente real que resolvió el ticket, no desde
+  una dirección compartida. Requiere un **segundo registro de app en
+  Entra**, distinto del usado para login (ver más abajo), con permiso
+  de aplicación `Mail.Send` — variables
+  `GRAPH_TENANT_ID`/`GRAPH_CLIENT_ID`/`GRAPH_CLIENT_SECRET` en
+  `.env.local` (ver `.env.local.example`). No hay `conversationId`
+  real de Graph todavía (`sendMail` no lo devuelve) — el asunto lleva
+  `[PANDO-123]` como red de seguridad de threading, tal cual se había
+  previsto aquí desde el principio. El agente puede añadir
+  destinatarios manuales y CC además del solicitante, editable en el
+  propio composer.
 - **Riesgos a mitigar explícitamente:**
   - Idempotencia por `graph_message_id` único (evita duplicados si el
     cron se solapa).
@@ -171,14 +188,28 @@ registro).
   `supabase-js` gestione el `state`, así que la prueba real solo
   funciona desde código).
 
-Cuando se monte la ingesta de correo, hará falta un **segundo**
-registro de app en Entra ID, con permisos de **aplicación** (no
-delegados) sobre `Mail.Read` / `Mail.Send`, restringido por política de
-acceso de aplicación al buzón `it@pando.es` — para que esa app no
-pueda leer correo de nadie más en el tenant. Requiere al administrador
-de Exchange de Pando para crear la política de acceso a la aplicación
-(New-ApplicationAccessPolicy vía PowerShell), ya que Manu no tiene ese
-rol.
+**Pendiente, y ya bloqueante:** el "Responder" de la ficha de ticket
+(`lib/graph/mail.ts`) ya está programado para enviar por Graph, pero
+necesita un **segundo** registro de app en Entra ID —
+distinto de `pando-helpdesk-auth`—, con permiso de **aplicación** (no
+delegado) `Mail.Send`. A diferencia de la ingesta (que sí será sobre
+`it@pando.es`, buzón solo de recepción), el envío suplanta el buzón
+**del agente que responde** (hoy `mramirez@pando.es`; el día que haya
+compañeros resolviendo tickets, los suyos también) — así que la
+política de acceso de aplicación debe restringir este registro a un
+**grupo de seguridad con los buzones de los agentes**, no a un único
+buzón. Requiere al administrador de Exchange de Pando para crear esa
+política (`New-ApplicationAccessPolicy` vía PowerShell, apuntando al
+grupo) y mantener el grupo actualizado si se suman agentes, ya que
+Manu no tiene ese rol. Hasta que exista ese registro y sus credenciales
+estén en `.env.local`
+(`GRAPH_TENANT_ID`/`GRAPH_CLIENT_ID`/`GRAPH_CLIENT_SECRET`),
+"Responder" falla con un error explícito en vez de fallar en silencio.
+
+Cuando se monte además la **ingesta** de correo sobre `it@pando.es`,
+hará falta un permiso `Mail.Read` de aplicación adicional (mismo
+registro u otro), con su propia política de acceso restringida
+únicamente a ese buzón.
 
 ## Alcance de la v1 (deliberadamente acotado)
 
@@ -229,7 +260,13 @@ siguiendo el sistema de diseño Pando de este documento**
 - [x] Cola de tickets (`/tickets`) como bandeja de trabajo: tabs por
       estado, filtros de prioridad/categoría/tipo/departamento vía URL,
       búsqueda, botón **"+ Nuevo"** para dar de alta tickets a mano
-      (peticiones que llegan por pasillo/teléfono, `origen = 'manual'`)
+      (peticiones que llegan por pasillo/teléfono, `origen = 'manual'`).
+      Listado en formato tabla por columnas (Ticket/Solicitante/
+      Categoría/Prioridad/Estado/Creado), cabecera clicable para
+      ordenar ascendente/descendente (estado en la URL, sobrevive a
+      filtros y pestañas) — Solicitante y Categoría no son ordenables
+      a propósito (serían sort sobre tabla relacionada, sin forma de
+      probarlo aquí con sesión real).
 - [x] Ficha de ticket (`/tickets/[id]`): panel de propiedades editable
       (estado/prioridad/categoría/tipo/departamento por dropdown),
       conversación con distinción visual de notas internas, composer
@@ -286,13 +323,26 @@ incluida la matriz de comportamiento esperado)**
       solo `admin` puede); políticas de bucket de Storage para
       adjuntos (no aplica todavía — no existe ningún bucket creado).
 
-**Correo (sin empezar)**
-- [ ] Segundo registro de app en Entra ID (permisos de aplicación sobre
-      el buzón) para la ingesta de Graph
+**Correo**
+- [x] Envío real de respuestas (`lib/graph/mail.ts`, Graph `sendMail`)
+      desde el composer — permite añadir destinatarios manuales y CC
+      además del solicitante (`messages.destinatarios`/`copia`). **No
+      funciona todavía en producción**: falta crear el segundo
+      registro de app en Entra con `Mail.Send` y rellenar
+      `GRAPH_TENANT_ID`/`GRAPH_CLIENT_ID`/`GRAPH_CLIENT_SECRET` en
+      `.env.local` (ver sección "Auth con Entra ID" arriba).
+- [ ] Segundo registro de app en Entra ID: `Mail.Send` de aplicación ya
+      necesario (política de acceso sobre el grupo de buzones de
+      agentes), `Mail.Read` de aplicación sobre `it@pando.es` cuando
+      llegue la ingesta
 - [ ] Lógica de ingesta de correo (Graph)
-- [ ] Envío real de respuestas por correo (Graph `sendMail`) — hoy el
-      composer de la ficha de ticket no llega a enviar nada, solo
-      registra el mensaje
+
+**Nota operativa — probar roles no-admin:** para probar Gerencia/
+Responsable de departamento/Empleado de verdad hace falta que una
+**segunda persona real** entre una vez por SSO (RLS depende de
+`auth.uid()`, no se puede simular). La regla de "no te quedes sin
+Admin" bloquea cambiarte tu propio rol si eres el único Admin — no es
+un bug, es la protección funcionando.
 
 ## Diseño UI/UX — Pando Helpdesk
 

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentPersona } from "@/lib/supabase/persona";
+import { sendMailAsUser } from "@/lib/graph/mail";
 import type { Estado, Prioridad } from "@/lib/format";
 
 async function requireAdmin() {
@@ -73,12 +74,44 @@ export async function sendMessage(
   ticketId: number,
   cuerpoTexto: string,
   esNotaInterna: boolean,
+  recipients?: { to: string[]; cc: string[] },
 ) {
   const persona = await requireAdmin();
   const body = cuerpoTexto.trim();
   if (!body) return { error: "El mensaje está vacío" };
 
   const supabase = await createClient();
+
+  let destinatarios: string[] | null = null;
+  let copia: string[] | null = null;
+
+  if (!esNotaInterna) {
+    const to = (recipients?.to ?? []).map((address) => address.trim()).filter(Boolean);
+    const cc = (recipients?.cc ?? []).map((address) => address.trim()).filter(Boolean);
+
+    if (to.length === 0) return { error: "Añade al menos un destinatario" };
+
+    const { data: ticket } = await supabase
+      .from("tickets")
+      .select("ref, titulo")
+      .eq("id", ticketId)
+      .single();
+
+    if (!ticket) return { error: "No se encontró el ticket" };
+
+    const subject = `[${ticket.ref ?? `PANDO-${ticketId}`}] ${ticket.titulo}`;
+    const bodyHtml = body.replace(/\n/g, "<br>");
+
+    try {
+      await sendMailAsUser(persona.email, { to, cc, subject, bodyHtml });
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : "No se pudo enviar el correo" };
+    }
+
+    destinatarios = to;
+    copia = cc.length > 0 ? cc : null;
+  }
+
   const { error } = await supabase.from("messages").insert({
     ticket_id: ticketId,
     direccion: "saliente",
@@ -86,6 +119,8 @@ export async function sendMessage(
     cuerpo_texto: body,
     es_nota_interna: esNotaInterna,
     enviado_at: esNotaInterna ? null : new Date().toISOString(),
+    destinatarios,
+    copia,
   });
 
   revalidatePath(`/tickets/${ticketId}`);

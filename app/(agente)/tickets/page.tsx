@@ -3,6 +3,7 @@ import { getCurrentPersona } from "@/lib/supabase/persona";
 import { PageHeader } from "@/components/page-header";
 import { TicketsTabs, type TicketTabKey } from "@/components/tickets-tabs";
 import { TicketsToolbar } from "@/components/tickets-toolbar";
+import { TicketsTableHeader, type SortDir, type SortField } from "@/components/tickets-table-header";
 import { TicketRow } from "@/components/ticket-row";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Inbox } from "lucide-react";
@@ -18,8 +19,6 @@ type TicketRowData = {
   created_at: string;
   solicitante: { nombre: string | null; email: string } | null;
   categoria: { nombre: string } | null;
-  tipo: { nombre: string } | null;
-  departamento: { nombre: string } | null;
 };
 
 const BUCKET_ESTADOS: Record<TicketTabKey, Estado[] | null> = {
@@ -30,6 +29,8 @@ const BUCKET_ESTADOS: Record<TicketTabKey, Estado[] | null> = {
   resueltos: ["resuelto"],
 };
 
+const SORT_FIELDS: SortField[] = ["id", "prioridad", "estado", "created_at"];
+
 export default async function TicketsPage({ searchParams }: PageProps<"/tickets">) {
   const params = await searchParams;
   const tab = (typeof params.estado === "string" ? params.estado : "todos") as TicketTabKey;
@@ -38,6 +39,12 @@ export default async function TicketsPage({ searchParams }: PageProps<"/tickets"
   const tipoId = typeof params.tipo === "string" ? params.tipo : undefined;
   const departamentoId = typeof params.departamento === "string" ? params.departamento : undefined;
   const q = typeof params.q === "string" ? params.q : undefined;
+
+  const sortParam = typeof params.sort === "string" ? params.sort : undefined;
+  const sortField: SortField = SORT_FIELDS.includes(sortParam as SortField)
+    ? (sortParam as SortField)
+    : "prioridad";
+  const sortDir: SortDir = params.dir === "asc" ? "asc" : "desc";
 
   const supabase = await createClient();
   const persona = await getCurrentPersona();
@@ -64,13 +71,14 @@ export default async function TicketsPage({ searchParams }: PageProps<"/tickets"
         .select(
           `id, ref, titulo, prioridad, estado, created_at,
            solicitante:personas!tickets_solicitante_id_fkey(nombre, email),
-           categoria:categorias(nombre),
-           tipo:tipos(nombre),
-           departamento:departamentos(nombre)`,
+           categoria:categorias(nombre)`,
         )
         .is("deleted_at", null)
-        .order("prioridad", { ascending: false })
-        .order("created_at", { ascending: true });
+        .order(sortField, { ascending: sortDir === "asc" });
+
+      if (sortField !== "created_at") {
+        query = query.order("created_at", { ascending: true });
+      }
 
       const estados = BUCKET_ESTADOS[tab] ?? BUCKET_ESTADOS.todos;
       if (estados) query = query.in("estado", estados);
@@ -85,6 +93,17 @@ export default async function TicketsPage({ searchParams }: PageProps<"/tickets"
   ]);
 
   const { data: tickets, error } = ticketsQuery;
+
+  const otherParams = {
+    prioridad,
+    categoria: categoriaId,
+    tipo: tipoId,
+    departamento: departamentoId,
+    q,
+    estado: tab !== "todos" ? tab : undefined,
+    sort: sortField,
+    dir: sortDir,
+  };
 
   return (
     <div>
@@ -103,7 +122,7 @@ export default async function TicketsPage({ searchParams }: PageProps<"/tickets"
       />
       <TicketsTabs
         active={tab}
-        otherParams={{ prioridad, categoria: categoriaId, tipo: tipoId, departamento: departamentoId, q }}
+        otherParams={{ prioridad, categoria: categoriaId, tipo: tipoId, departamento: departamentoId, q, sort: sortField, dir: sortDir }}
       />
       <TicketsToolbar categorias={categorias ?? []} tipos={tipos ?? []} departamentos={departamentos ?? []} />
 
@@ -122,22 +141,23 @@ export default async function TicketsPage({ searchParams }: PageProps<"/tickets"
       )}
 
       {!error && tickets && tickets.length > 0 && (
-        <div className="divide-y divide-border border-t border-border">
-          {tickets.map((ticket) => (
-            <TicketRow
-              key={ticket.id}
-              id={ticket.id}
-              refCode={ticket.ref ?? `PANDO-${ticket.id}`}
-              titulo={ticket.titulo}
-              prioridad={ticket.prioridad}
-              estado={ticket.estado}
-              createdAt={ticket.created_at}
-              solicitanteNombre={ticket.solicitante?.nombre ?? ticket.solicitante?.email ?? "—"}
-              categoriaNombre={ticket.categoria?.nombre ?? "Sin categoría"}
-              tipoNombre={ticket.tipo?.nombre ?? null}
-              departamentoNombre={ticket.departamento?.nombre ?? null}
-            />
-          ))}
+        <div className="mx-8 mb-8 overflow-hidden rounded-card border border-border">
+          <TicketsTableHeader currentParams={otherParams} sortField={sortField} sortDir={sortDir} />
+          <div className="divide-y divide-border">
+            {tickets.map((ticket) => (
+              <TicketRow
+                key={ticket.id}
+                id={ticket.id}
+                refCode={ticket.ref ?? `PANDO-${ticket.id}`}
+                titulo={ticket.titulo}
+                prioridad={ticket.prioridad}
+                estado={ticket.estado}
+                createdAt={ticket.created_at}
+                solicitanteNombre={ticket.solicitante?.nombre ?? ticket.solicitante?.email ?? "—"}
+                categoriaNombre={ticket.categoria?.nombre ?? "Sin categoría"}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>

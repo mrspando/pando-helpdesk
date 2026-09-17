@@ -12,6 +12,8 @@ export type ConversationMessage = {
   created_at: string;
   autor_nombre: string;
   is_self: boolean;
+  destinatarios: string[] | null;
+  copia: string[] | null;
 };
 
 export function Conversation({ messages }: { messages: ConversationMessage[] }) {
@@ -53,6 +55,12 @@ export function Conversation({ messages }: { messages: ConversationMessage[] }) 
               <p className="mt-1 whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink">
                 {message.cuerpo_texto}
               </p>
+              {message.destinatarios && message.destinatarios.length > 0 && (
+                <p className="mt-1.5 text-[11.5px] text-ink-muted">
+                  Para: {message.destinatarios.join(", ")}
+                  {message.copia && message.copia.length > 0 && <> · CC: {message.copia.join(", ")}</>}
+                </p>
+              )}
             </div>
           </div>
         ),

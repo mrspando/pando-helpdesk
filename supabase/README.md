@@ -62,6 +62,11 @@ reflejaba:
   `email_ingesta` para Admin. Las fases 2 (rutas/navegación) y 3
   (UI de solo lectura) de `PERMISOS.md` no necesitaron ninguna
   migración nueva, solo código de aplicación.
+- `20260917110000_messages_destinatarios.sql` — columnas
+  `messages.destinatarios`/`copia` (`text[]`, nulas salvo en salientes
+  no-nota) para registrar a quién se envió realmente cada respuesta,
+  ahora que el composer permite añadir destinatarios manuales y CC
+  además del solicitante (ver `lib/graph/mail.ts`).
 
 ## Próximos cambios de esquema
 

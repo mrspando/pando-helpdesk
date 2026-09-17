@@ -34,6 +34,8 @@ type MessageRow = {
   created_at: string;
   autor_id: string | null;
   autor: { nombre: string | null; email: string } | null;
+  destinatarios: string[] | null;
+  copia: string[] | null;
 };
 
 type EventRow = {
@@ -75,7 +77,7 @@ export default async function TicketDetailPage({ params }: PageProps<"/tickets/[
     supabase
       .from("messages")
       .select(
-        `id, direccion, cuerpo_texto, es_nota_interna, created_at, autor_id,
+        `id, direccion, cuerpo_texto, es_nota_interna, created_at, autor_id, destinatarios, copia,
          autor:personas!messages_autor_id_fkey(nombre, email)`,
       )
       .eq("ticket_id", ticketId)
@@ -105,6 +107,8 @@ export default async function TicketDetailPage({ params }: PageProps<"/tickets/[
     created_at: m.created_at,
     autor_nombre: m.autor?.nombre ?? m.autor?.email ?? "Solicitante",
     is_self: m.autor_id === persona?.id,
+    destinatarios: m.destinatarios,
+    copia: m.copia,
   }));
 
   const timelineEvents: TimelineEvent[] = (events ?? []).map((e) => ({
@@ -152,7 +156,7 @@ export default async function TicketDetailPage({ params }: PageProps<"/tickets/[
             <div className="flex-1 overflow-y-auto">
               <Conversation messages={conversation} />
             </div>
-            {canEdit && <Composer ticketId={ticket.id} />}
+            {canEdit && <Composer ticketId={ticket.id} defaultTo={ticket.solicitante?.email ?? ""} />}
           </TabsContent>
 
           <TabsContent value="cronologia" className="min-h-0 flex-1 overflow-y-auto">
