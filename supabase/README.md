@@ -95,6 +95,18 @@ reflejaba:
   `Timeline` de solo lectura que ve un agente, y `events` no tenía
   ninguna política que cubriera al solicitante de sus propios tickets
   (solo admin y Gerencia/Dirección podían leer esa tabla).
+- `20260917160000_direccion_solo_su_departamento.sql` — corrige un bug
+  real reportado por el usuario probando con Ruth Martínez
+  (`direccion`, Ventas): veía tickets de otros departamentos porque
+  `tickets_direccion_select` y `can_view_ticket()` dejaban pasar
+  también los tickets con `departamento_id IS NULL` (decisión de la
+  Fase 1 para no penalizar tickets sin triar). En la práctica, un
+  ticket sin triar de cualquier departamento se mostraba como si fuera
+  del suyo. Se retira esa excepción por completo — Dirección ahora
+  exige igualdad estricta de departamento, tal y como pedía
+  `PERMISOS.md` desde el principio. Los tickets sin triar dejan de ser
+  visibles para Dirección hasta que Admin/Gerencia les asigne
+  departamento.
 
 ## Próximos cambios de esquema
 

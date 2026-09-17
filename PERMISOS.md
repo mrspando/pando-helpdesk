@@ -20,10 +20,9 @@
   migraron todavía a llamar a `is_admin()` directamente (deuda técnica
   menor, mismo comportamiento).
 - Políticas nuevas: `tickets_gerencia_select` (todo), `tickets_direccion_select`
-  (su departamento **+ tickets sin departamento asignar**, decisión
-  explícita del usuario), `messages_lectura_extendida` y
-  `events_lectura_extendida` (mismo alcance, excluyendo siempre notas
-  internas), `email_ingesta_admin_select`.
+  (su departamento — ver corrección del 2026-09-17 más abajo),
+  `messages_lectura_extendida` y `events_lectura_extendida` (mismo
+  alcance, excluyendo siempre notas internas), `email_ingesta_admin_select`.
 - De paso se corrigió `attachments_visibles` (bug ya documentado en
   `supabase/README.md`), sustituida por `attachments_lectura` sobre
   `can_view_ticket()`.
@@ -86,6 +85,21 @@ abiertos** (confirmadas por el usuario antes de implementar):
   para admin/Gerencia/Dirección. También se enriqueció el listado
   `/mis-tickets` con prioridad, tipo, departamento y fecha de última
   actualización (antes solo mostraba categoría y fecha de creación).
+
+**Bug corregido (2026-09-17), reportado por el usuario probando con un
+usuario real de `direccion`:** con Ruth Martínez (Responsable de
+departamento, Ventas), la app mostraba tickets de otros departamentos.
+Causa: la Fase 1 había decidido que `tickets_direccion_select` y
+`can_view_ticket()` dejaran ver también los tickets con
+`departamento_id IS NULL` ("no penalizar tickets sin triar"), pero en
+la práctica cualquier ticket sin triar de cualquier departamento se
+veía como si fuera del suyo — justo lo que este documento pedía evitar
+("Todos los cálculos deben incorporar obligatoriamente:
+`tickets.departamento_id = usuario.departamento_id`"). Corregido en
+`supabase/migrations/20260917160000_direccion_solo_su_departamento.sql`:
+se retira la excepción, Dirección ahora exige igualdad estricta de
+departamento. Los tickets sin triar solo los ve Admin/Gerencia hasta
+que se les asigne departamento.
 
 **Explícitamente aparcado / fuera de esta pasada:**
 - Tests de seguridad automatizados contra RLS — omitidos a petición

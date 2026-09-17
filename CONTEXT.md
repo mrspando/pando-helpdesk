@@ -61,9 +61,10 @@ pendiente de una limpieza futura).
   Solo lectura.
 - **`direccion`** (mostrado como **"Responsable de departamento"**) —
   lectura limitada a `tickets.departamento_id = personas.departamento_id`,
-  incluyendo además los tickets que todavía no tienen departamento
-  asignado (decisión explícita: no penalizar tickets sin triar). Solo
-  lectura.
+  igualdad estricta (los tickets aún sin departamento asignado no son
+  visibles para este rol — corregido el 2026-09-17, ver
+  `PERMISOS.md`/`supabase/README.md`: la excepción original dejaba ver
+  tickets sin triar de cualquier departamento). Solo lectura.
 - **`empleado`** — ve únicamente sus propios tickets. Cualquier rol,
   incluido empleado, puede **crear** un ticket a su propio nombre (la
   política `tickets_propios_insert` nunca se restringió a admin); solo
