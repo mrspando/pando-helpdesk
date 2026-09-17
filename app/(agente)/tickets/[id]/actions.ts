@@ -70,6 +70,46 @@ export async function updateDepartamento(ticketId: number, departamentoId: numbe
   return { error: null };
 }
 
+// Un Responsable de departamento o Dirección General que crea un
+// ticket para sí mismo (permitido desde la Fase 3, ver PERMISOS.md) no
+// tiene acceso a /mis-tickets (esa ruta es solo para `empleado`), así
+// que necesita poder escribir en su propio ticket desde esta misma
+// ficha de agente. No usa requireAdmin(): solo exige ser el solicitante
+// real del ticket, igual que ya garantiza la política RLS
+// messages_propios_insert (esta comprobación solo da un mensaje de
+// error más claro que el de Postgres si alguien manipula el formulario).
+export async function replyAsSolicitante(ticketId: number, cuerpoTexto: string) {
+  const persona = await getCurrentPersona();
+  if (!persona) return { error: "No autorizado" };
+
+  const body = cuerpoTexto.trim();
+  if (!body) return { error: "El mensaje está vacío" };
+
+  const supabase = await createClient();
+
+  const { data: ticket } = await supabase
+    .from("tickets")
+    .select("solicitante_id")
+    .eq("id", ticketId)
+    .single();
+
+  if (!ticket || ticket.solicitante_id !== persona.id) {
+    return { error: "No autorizado" };
+  }
+
+  const { error } = await supabase.from("messages").insert({
+    ticket_id: ticketId,
+    direccion: "entrante",
+    autor_id: persona.id,
+    cuerpo_texto: body,
+    es_nota_interna: false,
+  });
+
+  revalidatePath(`/tickets/${ticketId}`);
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
 export type MessageMode = "reply" | "chat" | "nota";
 
 export async function sendMessage(

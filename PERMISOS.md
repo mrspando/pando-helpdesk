@@ -101,6 +101,25 @@ se retira la excepción, Dirección ahora exige igualdad estricta de
 departamento. Los tickets sin triar solo los ve Admin/Gerencia hasta
 que se les asigne departamento.
 
+**Dos bugs más corregidos (2026-09-17), también probando con Ruth
+Martínez al crear un ticket:**
+1. El diálogo "+ Nuevo" no preseleccionaba el departamento del usuario
+   que crea el ticket — tenía que elegirlo a mano cada vez, aun siendo
+   Responsable de un único departamento. Se añadió `departamento_id` a
+   `getCurrentPersona()` y un prop `defaultDepartamentoId` en
+   `NewTicketDialog` que lo preselecciona (sigue siendo editable).
+2. Gerencia/Dirección pueden crear tickets a su propio nombre desde la
+   Fase 3, pero no tienen `/mis-tickets` (solo `empleado`) y el
+   composer de `/tickets/[id]` está oculto para quien no sea `admin` —
+   así que no tenían ninguna forma de escribir en un ticket suyo una
+   vez creado. Se añadió `isOwnTicket` en la ficha: cuando el usuario
+   no-admin es el propio solicitante del ticket, se muestra el mismo
+   `ReplyForm` que usa un empleado en `/mis-tickets/[id]` (ahora
+   parametrizado por `action`), con una acción nueva
+   `replyAsSolicitante` que revalida `/tickets/[id]`. Sin cambios de
+   RLS: `messages_propios_insert` nunca estuvo restringida a
+   `empleado`.
+
 **Explícitamente aparcado / fuera de esta pasada:**
 - Tests de seguridad automatizados contra RLS — omitidos a petición
   del usuario.

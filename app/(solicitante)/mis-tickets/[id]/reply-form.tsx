@@ -5,14 +5,22 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { replyToOwnTicket } from "../actions";
 
-export function ReplyForm({ ticketId }: { ticketId: number }) {
+type ReplyAction = (ticketId: number, text: string) => Promise<{ error: string | null }>;
+
+export function ReplyForm({
+  ticketId,
+  action = replyToOwnTicket,
+}: {
+  ticketId: number;
+  action?: ReplyAction;
+}) {
   const [text, setText] = useState("");
   const [pending, startTransition] = useTransition();
 
   function submit() {
     if (!text.trim()) return;
     startTransition(async () => {
-      const { error } = await replyToOwnTicket(ticketId, text);
+      const { error } = await action(ticketId, text);
       if (error) {
         toast.error(error);
         return;

@@ -73,19 +73,21 @@ export function NewTicketDialog({
   categorias,
   tipos,
   departamentos,
+  defaultDepartamentoId = null,
 }: {
   isAdmin: boolean;
   personas: Persona[];
   categorias: Catalog[];
   tipos: Catalog[];
   departamentos: Catalog[];
+  defaultDepartamentoId?: number | null;
 }) {
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(createTicket, initialState);
   const [solicitanteId, setSolicitanteId] = useState("");
   const [categoriaId, setCategoriaId] = useState<number | null>(null);
   const [tipoId, setTipoId] = useState<number | null>(null);
-  const [departamentoId, setDepartamentoId] = useState<number | null>(null);
+  const [departamentoId, setDepartamentoId] = useState<number | null>(defaultDepartamentoId);
   const [prioridad, setPrioridad] = useState<Prioridad>("normal");
 
   return (

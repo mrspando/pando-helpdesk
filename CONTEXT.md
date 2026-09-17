@@ -298,6 +298,22 @@ siguiendo el sistema de diseño Pando de este documento**
       cualquier mensaje saliente no-nota para `first_response_at`, así
       que un "Chat" cuenta como primera respuesta igual que un
       "Responder" — no hizo falta tocar ningún trigger.
+      **Corregido (2026-09-17):** Gerencia/Dirección pueden crear
+      tickets a su propio nombre (Fase 3), pero al abrirlos en
+      `/tickets/[id]` (no tienen `/mis-tickets`, esa ruta es solo para
+      `empleado`) no había ninguna forma de escribir en su propio
+      ticket — el composer entero está oculto para quien no sea
+      `admin`. Se añadió `isOwnTicket` (`ticket.solicitante_id ===
+      persona.id`): cuando es su propio ticket y no es admin, se
+      muestra el mismo `ReplyForm` simple que usa un empleado en
+      `/mis-tickets/[id]` (reutilizado directamente, ahora acepta una
+      `action` en vez de tener siempre `replyToOwnTicket` fijo), con
+      una acción nueva `replyAsSolicitante` en
+      `app/(agente)/tickets/[id]/actions.ts` — mismo INSERT que
+      `replyToOwnTicket` pero revalidando `/tickets/[id]` en vez de
+      `/mis-tickets/[id]`. Sin cambios de RLS: `messages_propios_insert`
+      ya lo permitía para cualquier rol, nunca estuvo restringido a
+      `empleado`.
 - [x] Pestaña **"Cronología"** en la ficha de ticket: timeline de todos
       los `events` del ticket (creación, cada cambio de estado con su
       badge, prioridad, categoría, tipo, departamento) con quién y
@@ -399,6 +415,16 @@ incluida la matriz de comportamiento esperado)**
       cualquier rol puede crear un ticket a su propio nombre (política
       `tickets_propios_insert`, sin tocar); solo `admin` puede elegir
       un solicitante distinto en "+ Nuevo".
+      **Corregido (2026-09-17):** el campo Departamento del diálogo "+
+      Nuevo" empezaba siempre en "Sin departamento" para cualquier rol,
+      obligando a un Responsable de departamento a elegirlo a mano cada
+      vez en su propio ticket. Ahora `NewTicketDialog` recibe
+      `defaultDepartamentoId` (el `departamento_id` de quien ha
+      iniciado sesión, ahora expuesto por `getCurrentPersona()`) y
+      preselecciona ese departamento — sigue siendo editable, solo
+      cambia el valor inicial. Para `admin` no cambia nada en la
+      práctica (no tiene departamento propio, por eso queda exento del
+      onboarding).
 - [x] Onboarding obligatorio de nombre + departamento: toda persona
       nueva entra con `rol = 'empleado'` (el mínimo, ya era el valor
       por defecto); no puede usar el resto de la app hasta confirmar

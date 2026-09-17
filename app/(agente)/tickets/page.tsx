@@ -117,6 +117,7 @@ export default async function TicketsPage({ searchParams }: PageProps<"/tickets"
             categorias={categorias ?? []}
             tipos={tipos ?? []}
             departamentos={departamentos ?? []}
+            defaultDepartamentoId={persona?.departamentoId ?? null}
           />
         }
       />

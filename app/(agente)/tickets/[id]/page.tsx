@@ -9,6 +9,8 @@ import { Conversation, type ConversationMessage } from "./conversation";
 import { Composer } from "./composer";
 import { PropertiesPanel } from "./properties-panel";
 import { Timeline, type TimelineEvent } from "./timeline";
+import { ReplyForm } from "@/app/(solicitante)/mis-tickets/[id]/reply-form";
+import { replyAsSolicitante } from "./actions";
 
 type TicketDetail = {
   id: number;
@@ -24,6 +26,7 @@ type TicketDetail = {
   triaged_at: string | null;
   first_response_at: string | null;
   resolved_at: string | null;
+  solicitante_id: string;
   solicitante: { nombre: string | null; email: string } | null;
 };
 
@@ -68,7 +71,7 @@ export default async function TicketDetailPage({ params }: PageProps<"/tickets/[
       .from("tickets")
       .select(
         `id, ref, titulo, descripcion, categoria_id, tipo_id, departamento_id, prioridad, estado, created_at,
-         triaged_at, first_response_at, resolved_at,
+         triaged_at, first_response_at, resolved_at, solicitante_id,
          solicitante:personas!tickets_solicitante_id_fkey(nombre, email)`,
       )
       .eq("id", ticketId)
@@ -127,6 +130,7 @@ export default async function TicketDetailPage({ params }: PageProps<"/tickets/[
 
   const solicitanteNombre = ticket.solicitante?.nombre ?? ticket.solicitante?.email ?? "—";
   const canEdit = persona?.rol === "admin";
+  const isOwnTicket = ticket.solicitante_id === persona?.id;
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
@@ -168,6 +172,11 @@ export default async function TicketDetailPage({ params }: PageProps<"/tickets/[
               <Conversation messages={conversation} />
             </div>
             {canEdit && <Composer ticketId={ticket.id} defaultTo={ticket.solicitante?.email ?? ""} />}
+            {!canEdit && isOwnTicket && (
+              <div className="border-t border-border px-8 py-4">
+                <ReplyForm ticketId={ticket.id} action={replyAsSolicitante} />
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="cronologia" className="min-h-0 flex-1 overflow-y-auto">
