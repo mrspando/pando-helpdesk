@@ -151,10 +151,65 @@ posible tras cierre, cuenta en `reopen_count`.
 
 ## Flujo de correo
 
-- **Entrada — sin implementar.** cron cada ~2 min leyendo mensajes no
-  leídos del buzón compartido vía Graph. Se descartan webhooks de
-  Graph para v1 (caducan cada ~3 días, complejidad innecesaria a este
-  volumen).
+- **Entrada — implementada (2026-10-27).** `app/api/cron/ingest-mail/route.ts`
+  (Route Handler `GET`, pensado para que lo dispare un cron cada ~2 min, no
+  para abrirlo en el navegador): lee no leídos del buzón `it@pando.es` vía
+  Graph (`lib/graph/ingest.ts`), usando el segundo registro de app de Entra
+  dedicado a ingesta (`GRAPH_INGEST_CLIENT_ID`/`_SECRET`, permiso de
+  aplicación `Mail.ReadWrite` — ReadWrite y no solo Read porque hace falta
+  marcar cada correo como leído tras procesarlo para no reprocesarlo en la
+  siguiente pasada). Se descartan webhooks de Graph para v1 (caducan cada
+  ~3 días, complejidad innecesaria a este volumen). Protegido por
+  `CRON_SECRET` (header `Authorization: Bearer <valor>`, el mismo que
+  Vercel envía automáticamente en cada invocación de cron cuando esa env
+  var existe en el proyecto). Usa `lib/supabase/admin.ts`
+  (`SUPABASE_SERVICE_ROLE_KEY`, bypassa RLS) porque no hay sesión de
+  usuario en un cron — único uso de `service_role` en el proyecto, ver
+  PERMISOS.md.
+  - Por cada correo no leído: si los headers indican autorespuesta
+    (`Auto-Submitted` ≠ `no`, `X-Autoreply`, `X-Autorespond`,
+    `X-Auto-Response-Suppress`) se descarta (`email_ingesta.resultado =
+    'descartado'`); si el remitente no es `@pando.es` va a cuarentena
+    (`'cuarentena'`, nunca crea ticket); en otro caso se busca/crea la fila
+    en `personas` por email (si el remitente nunca ha hecho login SSO, el
+    trigger de alta la enlazará sin duplicados el día que lo haga, vía
+    `on conflict (email)`).
+  - **Threading:** si el asunto contiene `[PANDO-123]` (la misma marca que
+    pone `lib/graph/mail.ts` al enviar) y ese ticket existe, el correo se
+    añade como mensaje entrante al ticket ya existente (`resultado =
+    'adjuntado'`), con `graph_message_id` único para idempotencia. Si no
+    hay referencia (o referencia a un ticket borrado), se crea un ticket
+    nuevo igual que un alta manual: `titulo` = asunto (`"Sin asunto"` si
+    viene vacío), `descripcion` = cuerpo del correo — sin fila en
+    `messages` para ese primer correo, mismo patrón que `createTicket`/
+    `createOwnTicket` (la "Descripción inicial" se muestra aparte de la
+    conversación en la ficha de ticket). Categoría/tipo/departamento
+    quedan sin asignar: los fija el agente en el triaje.
+  - **Idempotencia ante solapamiento del cron:** se reclama cada correo
+    insertando primero en `email_ingesta` (unique en `graph_message_id`)
+    antes de tocar `tickets`/`messages`; si dos pasadas se solapan, la
+    segunda choca ahí y no duplica nada.
+  - El HTML se recorta antes de guardar (`lib/email/html.ts`,
+    `stripQuotedReply`) cortando en el contenedor que antepone Outlook a la
+    cita del hilo anterior (`id="divRplyFwdMsg"`/`"appendonsend"`); el
+    texto plano que se muestra en la conversación (`htmlToPlainText`) sale
+    de ese HTML ya recortado, sin librería nueva.
+  - Errores de un correo concreto (Graph, Postgres) quedan en
+    `email_ingesta.resultado = 'error'` con el motivo — no bloquean el
+    resto del lote ni reintentan indefinidamente (se marca como leído
+    también en error): es la "caja negra" para depurar quejas de "escribí
+    y no pasó nada", consultable por `admin` desde la app.
+  - **Pendiente de decidir — disparo del cron:** el plan Hobby de Vercel
+    solo admite cron nativo de una vez al día (expresiones más frecuentes
+    fallan el despliegue); `~2 min` real exige plan Pro o un scheduler
+    externo (cron-job.org, GitHub Actions programado, etc.) golpeando esta
+    misma URL con el header `Authorization: Bearer <CRON_SECRET>` — el
+    endpoint no distingue quién lo invoca. No se ha añadido `vercel.json`
+    todavía a propósito, para no arriesgar un fallo de despliegue sin
+    saber el plan actual.
+  - Sin manejo de adjuntos (no existe bucket de Storage creado todavía,
+    ver checklist de Roles y permisos más abajo) — un correo con adjuntos
+    se procesa igual pero el adjunto se pierde.
 - **Salida — implementada.** `lib/graph/mail.ts` llama a `sendMail`
   (acción, no crear-borrador-y-enviar) desde el composer de
   "Responder" en la ficha de ticket. **`it@pando.es` es solo de
@@ -200,28 +255,29 @@ registro).
   `supabase-js` gestione el `state`, así que la prueba real solo
   funciona desde código).
 
-**Pendiente, y ya bloqueante:** el "Responder" de la ficha de ticket
-(`lib/graph/mail.ts`) ya está programado para enviar por Graph, pero
-necesita un **segundo** registro de app en Entra ID —
-distinto de `pando-helpdesk-auth`—, con permiso de **aplicación** (no
-delegado) `Mail.Send`. A diferencia de la ingesta (que sí será sobre
-`it@pando.es`, buzón solo de recepción), el envío suplanta el buzón
-**del agente que responde** (hoy `mramirez@pando.es`; el día que haya
-compañeros resolviendo tickets, los suyos también) — así que la
-política de acceso de aplicación debe restringir este registro a un
-**grupo de seguridad con los buzones de los agentes**, no a un único
-buzón. Requiere al administrador de Exchange de Pando para crear esa
-política (`New-ApplicationAccessPolicy` vía PowerShell, apuntando al
-grupo) y mantener el grupo actualizado si se suman agentes, ya que
-Manu no tiene ese rol. Hasta que exista ese registro y sus credenciales
-estén en `.env.local`
-(`GRAPH_TENANT_ID`/`GRAPH_CLIENT_ID`/`GRAPH_CLIENT_SECRET`),
-"Responder" falla con un error explícito en vez de fallar en silencio.
+**Resuelto (2026-10-27):** el "Responder" de la ficha de ticket
+(`lib/graph/mail.ts`) envía por Graph suplantando el buzón **del agente
+que responde** (hoy `mramirez@pando.es`; el día que haya compañeros
+resolviendo tickets, los suyos también), con un **segundo** registro de
+app en Entra ID —distinto de `pando-helpdesk-auth`—, permiso de
+**aplicación** (no delegado) `Mail.Send`, restringido por política de
+acceso de aplicación a un **grupo de seguridad con los buzones de los
+agentes** (`Pando Helpdesk Agentes`, no un único buzón). El admin de
+Exchange de Pando creó esa política vía `New-ApplicationAccessPolicy`
+(Manu no tiene ese rol) y debe mantener el grupo actualizado si se
+suman agentes. Primer intento de envío real falló con `AADSTS7000215`
+("Invalid client secret") porque `GRAPH_CLIENT_SECRET` tenía el "Secret
+ID" (formato GUID) en vez del "Secret Value" real del portal — una vez
+regenerado el secreto y copiado el valor correcto, el envío funciona.
 
-Cuando se monte además la **ingesta** de correo sobre `it@pando.es`,
-hará falta un permiso `Mail.Read` de aplicación adicional (mismo
-registro u otro), con su propia política de acceso restringida
-únicamente a ese buzón.
+**Ingesta ya implementada en código** (`app/api/cron/ingest-mail`, ver
+"Flujo de correo" arriba), sobre un **tercer** registro de app
+(`GRAPH_INGEST_CLIENT_ID`/`_SECRET`), con permiso de aplicación
+`Mail.ReadWrite` restringido por política de acceso de aplicación
+únicamente al buzón `it@pando.es` — así configurado por el admin de
+Exchange el 2026-10-27 (`New-ApplicationAccessPolicy` sobre el grupo
+`Pando Helpdesk Buzon IT`). Falta decidir qué dispara el cron en
+producción (plan de Vercel vs. scheduler externo, ver nota arriba).
 
 ## Alcance de la v1 (deliberadamente acotado)
 
@@ -510,16 +566,20 @@ incluida la matriz de comportamiento esperado)**
 **Correo**
 - [x] Envío real de respuestas (`lib/graph/mail.ts`, Graph `sendMail`)
       desde el composer — permite añadir destinatarios manuales y CC
-      además del solicitante (`messages.destinatarios`/`copia`). **No
-      funciona todavía en producción**: falta crear el segundo
-      registro de app en Entra con `Mail.Send` y rellenar
-      `GRAPH_TENANT_ID`/`GRAPH_CLIENT_ID`/`GRAPH_CLIENT_SECRET` en
-      `.env.local` (ver sección "Auth con Entra ID" arriba).
-- [ ] Segundo registro de app en Entra ID: `Mail.Send` de aplicación ya
-      necesario (política de acceso sobre el grupo de buzones de
-      agentes), `Mail.Read` de aplicación sobre `it@pando.es` cuando
-      llegue la ingesta
-- [ ] Lógica de ingesta de correo (Graph)
+      además del solicitante (`messages.destinatarios`/`copia`).
+      Probado en producción el 2026-10-27 (impersonado como
+      `mramirez@pando.es`). El fallo inicial fue `AADSTS7000215` por
+      haber pegado el "Secret ID" de Entra en vez del "Secret Value" en
+      `GRAPH_CLIENT_SECRET` — corregido regenerando el secreto.
+- [x] Segundo y tercer registro de app en Entra ID: `Mail.Send` de
+      aplicación sobre el grupo `Pando Helpdesk Agentes` (envío) y
+      `Mail.ReadWrite` de aplicación sobre `it@pando.es` vía el grupo
+      `Pando Helpdesk Buzon IT` (ingesta), ambos con
+      `New-ApplicationAccessPolicy` ya aplicada por el admin de Exchange
+      (2026-10-27).
+- [x] Lógica de ingesta de correo (Graph): `app/api/cron/ingest-mail`,
+      ver "Flujo de correo" arriba. Falta decidir el disparador en
+      producción (Vercel Cron en plan Pro, o scheduler externo).
 
 **Nota operativa — probar roles no-admin:** para probar Gerencia/
 Responsable de departamento/Empleado de verdad hace falta que una
